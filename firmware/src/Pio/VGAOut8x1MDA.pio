@@ -1,0 +1,61 @@
+;; Copyright (C) 2024 Scrap Computing
+
+.program VGAOut8x1MDA
+
+
+; This is for monochrome 800x600@56Hz.
+; Pixel clock is 36.0 MHz, which is a period of 27.7ns  ~ 7instr delay
+; Each loop draws 8 monochrome pixels.
+; So the loop should take 27.7 * 8 = 222.2ns ~ 55.5 instrs
+; Each instruction should take 8ns @125MHz
+; Each instruction should take 4ns @250MHz
+
+.wrap_target
+    pull block         ; OSR = FIFO
+    set x, 7
+
+pixel_loop:
+    out isr, 4         ; ISR = VHRR, shift 4 bits out of OSR
+    in isr, 2          ; ISR = VHRRRR
+    in isr, 2          ; ISR = VHRRRRRR
+    mov pins, isr      ; Pins = ISR
+    jmp x-- pixel_loop_delay
+.wrap
+
+pixel_loop_delay:
+    nop
+    jmp pixel_loop
+     
+% c-sdk {
+static inline void VGAOut8x1MDAPioConfig(PIO Pio, uint SM, uint Offset,
+   uint MDAGPIO) {
+   // static constexpr const uint OutBits = 4;
+   static constexpr const uint OutBits = 8;
+   // Initialize all output GPIOs
+   for (int i = 0; i != OutBits; ++i)
+     pio_gpio_init(Pio, MDAGPIO + i);
+
+
+   pio_sm_config Conf = VGAOut8x1MDA_program_get_default_config(Offset);
+   // out pins: RGB
+   sm_config_set_out_pins(&Conf, MDAGPIO, OutBits);
+   // We only need an output fifo, so create a 8-entry queue.
+   sm_config_set_fifo_join(&Conf, PIO_FIFO_JOIN_TX);
+
+
+   // Shift to the left, no auto-push
+   // This means that if we IN from Pins == 0b0011, then ISR = 0b00...0011
+   sm_config_set_in_shift(&Conf, /*shift_right=*/false, /*autopush=*/false,
+                                 /*push_threshold=*/32);
+
+   // sm_config_set_out_shift(&Conf, /*shift_right=*/true, /*autopush=*/false, 
+   //                              /*push_threshold=*/32);
+
+
+   // Initializations
+   // Set pin direction
+   pio_sm_set_consecutive_pindirs(Pio, SM, MDAGPIO, OutBits, /*is_out=*/true);
+
+   pio_sm_init(Pio, SM, Offset, &Conf);
+}
+%}

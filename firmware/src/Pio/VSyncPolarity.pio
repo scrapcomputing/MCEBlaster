@@ -1,0 +1,41 @@
+;; Copyright (C) 2024 Scrap Computing
+
+.program VSyncPolarity
+.define VSYNC_GPIO 6
+
+; Counts (down) while VSync is low and pushes counter value to FIFO.
+
+entry:
+  pull block                  ; OSR = counter
+  wait 0 gpio VSYNC_GPIO
+
+reset_counter:
+  mov x, osr                  ; X = OSR (= counter)
+
+vsync_low_loop:
+  jmp pin, vsync_high         ; If VSync is High, jmp vsync_high
+  jmp x--, vsync_low_loop     ; X--
+
+vsync_high:
+  wait 0 gpio VSYNC_GPIO
+  in x, 32                    ; ISR = X
+  push noblock
+  jmp reset_counter
+
+
+% c-sdk {
+static inline void VSyncPolarityPioConfig(PIO Pio, uint SM, uint Offset, uint VSyncGPIO) {
+   pio_sm_config Conf = VSyncPolarity_program_get_default_config(Offset);
+   // Shift to the left, auto-push
+   sm_config_set_in_shift(&Conf, /*shift_right=*/false, /*autopush=*/false,
+                                 /*push_threshold=*/32);
+
+   sm_config_set_jmp_pin(&Conf, VSyncGPIO);
+
+   // Initializations
+   // Set pin direction
+   pio_sm_set_consecutive_pindirs(Pio, SM, VSyncGPIO, 1, /*is_out=*/false);
+
+   pio_sm_init(Pio, SM, Offset, &Conf);
+}
+%}

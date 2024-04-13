@@ -1,0 +1,63 @@
+;; Copyright (C) 2024 Scrap Computing
+
+.program CGA640x200
+
+.define TTL_PIN_CNT 8
+.define HSYNC_GPIO 7
+
+; Pixel clock 640 mode: 14.318MHz (315/22):  69.84ns/pixel 17.46 instrs (4ns/instr)
+; Pixel clock 320 mode:  7.159MHz (315/44): 140ns/pixel
+
+entry:
+
+.wrap_target
+loop:
+   in pins, TTL_PIN_CNT [14]
+   in pins, TTL_PIN_CNT [14]
+   in pins, TTL_PIN_CNT [14]
+   in pins, TTL_PIN_CNT [6]   ; ISR = RRGGBBHV(#3),RRGGBBHV(#2),RRGGBBHV(#1),RRGGBBHV(#0)
+   in isr, 2                  ; ISR = HV(#0)RRGGBBHV(#3),RRGGBBHV(#2),RRGGBBHV(#1),RRGGBB(#0)
+   mov y, isr                 ; Save contents of ISR, y = ISR    (#3,#2,#1,#0)
+   in null, 23                ; ISR = ...000RRGGBBH(#3)
+   mov osr, isr               ; OSR = ...000RRGGBBH(#3)
+   out x, 1                   ; X = H
+   mov isr, y                 ; ISR = original contents of ISR
+   push noblock               ; FIFO = ISR (#3,#2,#1,#0)
+   jmp !x loop
+
+wait_hsync:
+   wait 0 gpio HSYNC_GPIO [0] ; Wait [0] for better sampling?
+   .wrap                      ; jmp loop
+
+
+% c-sdk {
+static inline void CGA640x200PioConfig(PIO Pio, uint SM, uint Offset, uint RGB_GPIO,
+                                       uint16_t ClkDivInt,
+                                       uint8_t ClkDivFrac) {
+
+   pio_sm_config Conf = CGA640x200_program_get_default_config(Offset);
+   // in pins: RGB
+   sm_config_set_in_pins(&Conf, RGB_GPIO);
+   // Shift to the right, no auto-push
+   // This means that if we IN from Pins == 0b0011, then ISR = 0b00...0011
+   sm_config_set_in_shift(&Conf, /*shift_right=*/true, /*autopush=*/false,
+                                 /*push_threshold=*/32);
+
+   // Out: Shift Right
+   sm_config_set_out_shift(&Conf, /*shift_right=*/true, /*autopush=*/false,
+                                  /*push_threshold=*/32);
+
+   // We only need an input fifo, so create a 8-entry queue.
+   sm_config_set_fifo_join(&Conf, PIO_FIFO_JOIN_RX);
+
+   // Set the clock divider
+   sm_config_set_clkdiv_int_frac(&Conf, ClkDivInt, ClkDivFrac);
+   
+
+   // Initializations
+   // Set pin direction
+   pio_sm_set_consecutive_pindirs(Pio, SM, RGB_GPIO, 8, /*is_out=*/false);
+
+   pio_sm_init(Pio, SM, Offset, &Conf);
+}
+%}

@@ -1,0 +1,82 @@
+;; Copyright (C) 2024 Scrap Computing
+
+.program VGAOut4x1Pixels
+
+.define VGA_PIN_CNT 8
+
+; VGA pixel clock is 25.175MHz, so 39ns per pixel.
+; This loop draws 4 pixels on screen. 
+; So the loop should take 39.721ns * 8 = 317.768ns.
+; Each instruction should take 8ns @125MHz, so 317.768 is ~40 instrs
+; Each instruction should take 4ns @250MHz, so 317.768 is ~79 instrs
+entry:
+    pull block   ; OSR = Dark yellow
+    mov y, osr   ; Y = Dark Yellow
+    pull block   ; OSR = Brown
+    mov isr, osr ; ISR = Brown
+
+loop:
+    .wrap_target
+    pull block                     ; OSR = FIFO
+
+    out x, VGA_PIN_CNT             ; X = HVRRGGBB
+    jmp x!=y not_dark_yellow0
+    mov x, isr
+    jmp pins0
+not_dark_yellow0:
+    nop [1]
+pins0:
+    mov pins, x [6]
+
+    out x, VGA_PIN_CNT             ; X = HVRRGGBB
+    jmp x!=y not_dark_yellow1
+    mov x, isr
+    jmp pins1
+not_dark_yellow1:
+    nop [1]
+pins1:
+    mov pins, x [6]
+
+    out x, VGA_PIN_CNT             ; X = HVRRGGBB
+    jmp x!=y not_dark_yellow2
+    mov x, isr
+    jmp pins2
+not_dark_yellow2:
+    nop [1]
+pins2:
+    mov pins, x [6]
+
+    out x, VGA_PIN_CNT             ; X = HVRRGGBB
+    jmp x!=y not_dark_yellow3
+    mov x, isr
+    jmp pins3
+not_dark_yellow3:
+    nop [1]
+pins3:
+    mov pins, x [4]
+
+    .wrap                          ; jmp loop
+     
+% c-sdk {
+static inline void VGAOut4x1PixelsPioConfig(PIO Pio, uint SM, uint Offset,
+   uint RGBGPIO) {
+
+   // Initialize all output GPIOs
+   for (int i = 0; i != 8; ++i)
+     pio_gpio_init(Pio, RGBGPIO + i);
+
+
+   pio_sm_config Conf = VGAOut4x1Pixels_program_get_default_config(Offset);
+   // out pins: RGB
+   sm_config_set_out_pins(&Conf, RGBGPIO, 8);
+   // We only need an input fifo, so create a 8-byte queue.
+   sm_config_set_fifo_join(&Conf, PIO_FIFO_JOIN_TX);
+
+
+   // Initializations
+   // Set pin direction
+   pio_sm_set_consecutive_pindirs(Pio, SM, RGBGPIO, 8, /*is_out=*/true);
+
+   pio_sm_init(Pio, SM, Offset, &Conf);
+}
+%}

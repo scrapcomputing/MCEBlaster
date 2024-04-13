@@ -1,0 +1,53 @@
+;; Copyright (C) 2024 Scrap Computing
+
+.program MDA720x350
+
+.define TTL_PIN_CNT 8
+.define HSYNC_GPIO 7
+
+; Pixel clock: 16.257MHz
+; MDA: 750 pixels 18.43KHz HSync 54259ns for 750pixels + porches < 72ns
+; 4ns / instr @ 250MHz , so we need 17 instrs / pixel
+; We are doing 4 reads so 4 * 17 = 68 instrs
+
+entry:
+
+.wrap_target
+loop:
+   in pins, TTL_PIN_CNT [16]  ; ISR = HVRRGGBB(#0)
+   in pins, TTL_PIN_CNT [16]  ; ISR = HVRRGGBB(#1),HVRRGGBB(#0)
+   in pins, TTL_PIN_CNT [16]  ; ISR = HVRRGGBB(#2),HVRRGGBB(#1),HVRRGGBB(#0)
+   in pins, TTL_PIN_CNT [10]  ; ISR = HVRRGGBB(#3),HVRRGGBB(#2),HVRRGGBB(#1),HVRRGGBB(#0)
+   mov osr, isr               ; Save contents of ISR, OSR = ISR    (#3,#2,#1,#0)
+   in null, (24+HSYNC_GPIO)   ; ISR = H
+   mov x, isr                 ; X = H
+   mov isr, osr               ; ISR = original contents of ISR
+   push noblock               ; FIFO = ISR (#3,#2,#1,#0)   
+   jmp !x loop
+
+wait_hsync:
+   wait 0 gpio HSYNC_GPIO
+   .wrap                      ; jmp loop
+   
+
+% c-sdk {
+static inline void MDA720x350PioConfig(PIO Pio, uint SM, uint Offset, uint RGB_GPIO,
+                                       uint16_t ClkDivInt,
+                                       uint8_t ClkDivFrac) {
+
+   pio_sm_config Conf = MDA720x350_program_get_default_config(Offset);
+   // in pins: RGB
+   sm_config_set_in_pins(&Conf, RGB_GPIO);
+   // Shift to the right, no auto-push
+   sm_config_set_in_shift(&Conf, /*shift_right=*/true, /*autopush=*/false,
+                                 /*push_threshold=*/32);
+   // Set the clock divider
+   sm_config_set_clkdiv_int_frac(&Conf, ClkDivInt, ClkDivFrac);
+
+   // Initializations
+   // Set pin direction
+   pio_sm_set_consecutive_pindirs(Pio, SM, RGB_GPIO, 8, /*is_out=*/false);
+
+   pio_sm_init(Pio, SM, Offset, &Conf);
+}
+%}

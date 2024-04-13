@@ -1,0 +1,29 @@
+;; Copyright (C) 2024 Scrap Computing
+
+.program NoInputSignal
+
+.define HSYNC_GPIO 7
+
+; Provides a signal pulse to the VGA Writer so that it knows when there
+; is no input signal.
+
+.wrap_target
+   wait 1 gpio HSYNC_GPIO
+   in null, 32                ; ISR = 0
+   wait 0 gpio HSYNC_GPIO
+   .wrap
+
+% c-sdk {
+static inline void noInputSignalPioConfig(PIO Pio, uint SM, uint Offset, uint HSyncGPIO) {
+   pio_sm_config Conf = NoInputSignal_program_get_default_config(Offset);
+   // Shift to the left, auto-push
+   sm_config_set_in_shift(&Conf, /*shift_right=*/false, /*autopush=*/true,
+                                 /*push_threshold=*/32);
+
+   // Initializations
+   // Set pin direction
+   pio_sm_set_consecutive_pindirs(Pio, SM, HSyncGPIO, 1, /*is_out=*/false);
+
+   pio_sm_init(Pio, SM, Offset, &Conf);
+}
+%}

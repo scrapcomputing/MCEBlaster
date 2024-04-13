@@ -1,0 +1,50 @@
+;; Copyright (C) 2024 Scrap Computing
+
+.program MDA720x350Border
+
+.define RGB_CNT 2
+.define HSYNC_GPIO 7
+
+; Pixel clock: 16.257MHz:  61.512ns/pixel ~16.608 instrs / pixel
+; Find the black horizontal border by counting black pixels until we find a non-black.
+
+entry:
+   pull block             ; OSR = counter
+
+.wrap_target
+newline:
+   mov y, osr             ; Initialize counter Y = OSR
+loop:
+   in pins, RGB_CNT [6]   ; ISR = IV
+   mov x, isr             ; X = IV
+   jmp !x black           ; if X == 0 jump to black0:
+   jmp non_black          ; else jump to non_black:
+black:
+   jmp y-- loop
+   ; Note: Fallthrough sets Y = FFFFFFFF
+
+non_black:
+   in y, 32               ; ISR = Y
+   wait 1 gpio HSYNC_GPIO ; wait for HSYNC to be 1
+   push noblock           ; FIFO = Y
+   wait 0 gpio HSYNC_GPIO ; wait for HSYNC to be 0
+   .wrap                  ; jmp newline
+
+% c-sdk {
+static inline void MDA720x350BorderPioConfig(PIO Pio, uint SM, uint Offset, uint GPIO, uint HSYNC_GPIO, float ClkDiv) {
+   pio_sm_config Conf = MDA720x350Border_program_get_default_config(Offset);
+   // in pins: RGB
+   sm_config_set_in_pins(&Conf, GPIO);
+   // Shift to the left, no auto-push
+   sm_config_set_in_shift(&Conf, /*shift_right=*/false, /*autopush=*/false,
+                                 /*push_threshold=*/32);
+   sm_config_set_clkdiv(&Conf, ClkDiv);
+
+   // Initializations
+   // Set pin direction
+   pio_sm_set_consecutive_pindirs(Pio, SM, GPIO, 2, /*is_out=*/false);
+   pio_sm_set_consecutive_pindirs(Pio, SM, HSYNC_GPIO, 2, /*is_out=*/false);
+
+   pio_sm_init(Pio, SM, Offset, &Conf);
+}
+%}
