@@ -20,6 +20,15 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 - EGA brown color correction
 - On-screen messages
 
+# Installing the firmware to the Pico
+- Download firmware (MCEBlaster.uf2): https://github.com/scrapcomputing/MCEBlaster/releases
+- Unplug the Pico
+- Press and hold the small "BOOTSEL" button on the Pico
+- While holding the BOOTSEL button, connect the Pico to your PC with a micro-USB cable
+- The Pico should show up as a mass-storage device
+- Copy the `MCEBlaster.uf2` firmware to the drive associated with the Pico
+- Safely eject the mass-storage device
+
 
 <img src='img/MCEBlaster_PCB_front.jpg' height=200 width=auto>
 
