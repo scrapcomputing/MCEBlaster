@@ -53,7 +53,7 @@ J3             | 1            | DB15 Female HighDensity Connector               
 R3 R4 R6       | 3            | 422 Ohm 1206 SMD resistor 1% (alternatively 470 Ohm) | For VGA signal DAC
 R2 R5 R7       | 3            | 845 Ohm 1206 SMD resistor 1% (alternatively 1K Ohm)  | For VGA signal DAC
 SW1,SW2        | 1            | 6mm Through-hole push button                         | Auto-adjust and pixel-clock buttons
-U1             | 1            | 74LS245 SO-20 SMD (12.8x7.5mm) (aka SOIC)            | Level-shifter IC
+U1             | 1            | 74LVC245 SO-20 SMD (12.8x7.5mm) (aka SOIC)           | Level-shifter IC
 U2             | 1            | RaspberryPi Pico                                     | Pi Pico
 N/A (for Pico) | 2            | 1x20 female through-hole pin-header 2.54mm pitch     | PCB Pico headers
 N/A (for Pico) | 2            | 1x20 male through-hole pin-header 2.54mm pitch       | Headers for the Pico
