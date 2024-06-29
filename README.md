@@ -34,6 +34,10 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 
 <img src='img/MCEBlaster_PCB_back.jpg' height=200 width=auto>
 
+# Schematic
+
+<img src='img/MCEBlaster.svg' alt="MCE Blaster Schematic" height=300 width=auto>
+
 # Bill Of Materials
 
 Download gerbers: https://github.com/scrapcomputing/MCEBlaster/releases
