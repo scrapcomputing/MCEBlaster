@@ -5,6 +5,7 @@ A simple standalone MCA/CGA/EGA to VGA adapter based on a raspberry pi Pico.
 <img src='img/MCEBlaster_photo.jpg' height=200 width=auto>
 
 # Videos
+- MCE Blaster video part 2: https://www.youtube.com/watch?v=Neg1WR7Hz5s
 - MCE Blaster video part 1: https://www.youtube.com/watch?v=kgDOiGoxKvE
 
 # How it works
