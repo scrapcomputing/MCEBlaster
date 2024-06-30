@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name MCEBlaster)(type KiCad)(uri ${KIPRJMOD}/MCEBlaster.pretty)(options "")(descr ""))
+)

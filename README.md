@@ -20,6 +20,7 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 - Auto-adjustment functionality that centers the image on screen
 - EGA brown color correction
 - On-screen messages
+- Two PCB variants, one SMD and one Through-Hole.
 
 # Installing the firmware to the Pico
 - Download firmware (MCEBlaster.uf2): https://github.com/scrapcomputing/MCEBlaster/releases
@@ -30,10 +31,29 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 - Copy the `MCEBlaster.uf2` firmware to the drive associated with the Pico
 - Safely eject the mass-storage device
 
+# Usage
+## Adjusting the pixel clock
+- Push the `PIXEL CLOCK` button once, this will enter the pixel adjust mode.
+- Pushing `PIXEL CLOCK` again will increment the pixel clock by 10KHz.
+- Medium-pushing (about 1 second push) `PIXEL CLOCK` will increment by 1KHz
+- Pushing `AUTO ADJUST` will decrement by 10KHz.
+- Medium-pushing (about 1 second push) `AUTO ADJUST` will decrement by 1KHz.
+- Exit pixel clock adjust mode by not pushing any buttons for a few seconds. This won't save the settings to flash.
+- Save settings to flash memory by long-push (keep pushed until you see message) `PIXEL CLOCK`.
 
+## Centering the image
+- Push the `AUTO ADJUST` button. This works best when the image shown is full from border to border.
+- Long-push the `AUTO ADJUST` button turns on continuous auto-centering mode. This may be useful occasionally, but won't work well if the image is mostly blank as it may keep re-adjusting the image.
+
+
+
+# SMD Version
 <img src='img/MCEBlaster_PCB_front.jpg' height=200 width=auto>
-
 <img src='img/MCEBlaster_PCB_back.jpg' height=200 width=auto>
+
+# THT (Through-Hole) Version
+<img src='img/MCEBlasterTHT_PCB_front.jpg' height=200 width=auto>
+<img src='img/MCEBlasterTHT_PCB_back.jpg' height=200 width=auto>
 
 # Schematic
 
@@ -41,22 +61,29 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 
 # Bill Of Materials
 
+There are two versions of the PCB available:
+
+1. The SMD version, and
+2. The Through-hole version (with the `_THT` file suffix)
+
+So please select the parts according to the PCB version you are planning to build.
+
 Download gerbers: https://github.com/scrapcomputing/MCEBlaster/releases
 
-Reference      | Quantity     | Value                                                | Description
----------------|--------------|------------------------------------------------------|------------
-C1             | 1            | Capacitor SMD 0.1uF 1206                             | Decoupling capacitor for level-shifter IC
-D1             | 1 (optional) | Schottky Diode THT                                   | For alternative powering the MCE Blaster (instead of the Pico's micro-USB)
-J2             | 1 (optional) | 1x02 through-hole Male PinHeader 2.54mm              | For alternative external power
-J1             | 1            | DB9 Male Horizontal                                  | For connecting to TTL video card
-J3             | 1            | DB15 Female HighDensity Connector                    | For connectint to VGA monitor
-R3 R4 R6       | 3            | 422 Ohm 1206 SMD resistor 1% (alternatively 470 Ohm) | For VGA signal DAC
-R2 R5 R7       | 3            | 845 Ohm 1206 SMD resistor 1% (alternatively 1K Ohm)  | For VGA signal DAC
-SW1,SW2        | 1            | 6mm Through-hole push button                         | Auto-adjust and pixel-clock buttons
-U1             | 1            | 74LVC245 SO-20 SMD (12.8x7.5mm) (aka SOIC)           | Level-shifter IC
-U2             | 1            | RaspberryPi Pico                                     | Pi Pico
-N/A (for Pico) | 2            | 1x20 female through-hole pin-header 2.54mm pitch     | PCB Pico headers
-N/A (for Pico) | 2            | 1x20 male through-hole pin-header 2.54mm pitch       | Headers for the Pico
+Reference      | Quantity     | Value                                                                  | Description
+---------------|--------------|------------------------------------------------------------------------|------------
+C1             | 1            | Capacitor SMD 0.1uF 1206 (or disk ceramic for Through-Hole)            | Decoupling capacitor for level-shifter IC
+D1             | 1 (optional) | Schottky Diode THT                                                     | For alternative powering the MCE Blaster (instead of the Pico's micro-USB)
+J2             | 1 (optional) | 1x02 through-hole Male PinHeader 2.54mm                                | For alternative external power
+J1             | 1            | DB9 Male Horizontal                                                    | For connecting to TTL video card
+J3             | 1            | DB15 Female HighDensity Connector                                      | For connectint to VGA monitor
+R3 R4 R6       | 3            | 422 Ohm 1206 SMD (or Through-hole) resistor 1% (alternatively 470 Ohm) | For VGA signal DAC
+R2 R5 R7       | 3            | 845 Ohm 1206 SMD (or Through-hole) resistor 1% (alternatively 1K Ohm)  | For VGA signal DAC
+SW1,SW2        | 1            | 6mm Through-hole push button                                           | Auto-adjust and pixel-clock buttons
+U1             | 1            | 74LVC245 SO-20 SMD 12.8x7.5mm aka SOIC (or DIP-20 + optional socket for Through-hole) | Level-shifter IC
+U2             | 1            | RaspberryPi Pico                                                       | Pi Pico
+N/A (for Pico) | 2            | 1x20 female through-hole pin-header 2.54mm pitch                       | PCB Pico headers
+N/A (for Pico) | 2            | 1x20 male through-hole pin-header 2.54mm pitch                         | Headers for the Pico
 
 
 # Resources:
