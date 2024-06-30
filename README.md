@@ -8,7 +8,7 @@ A simple standalone MCA/CGA/EGA to VGA adapter based on a raspberry pi Pico.
 - MCE Blaster video part 2: https://www.youtube.com/watch?v=Neg1WR7Hz5s
 - MCE Blaster video part 1: https://www.youtube.com/watch?v=kgDOiGoxKvE
 
-# How it works
+# What it does
 The Pico reads the TTL input video signal, writes the pixels to a buffer and then generates the VGA signal using the pixels from the buffer.
 
 # Features
@@ -45,6 +45,25 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 - Push the `AUTO ADJUST` button. This works best when the image shown is full from border to border.
 - Long-push the `AUTO ADJUST` button turns on continuous auto-centering mode. This may be useful occasionally, but won't work well if the image is mostly blank as it may keep re-adjusting the image.
 
+# How it works
+## Overview
+The first core reads the TTL video data (through the level-shifter) from a PIO state-machine and places the pixels onto a buffer in memory.
+The second core works completely independently from the first core and reads the pixel from the buffer and feeds them, along with the necessary Horizontal and Vertical Sync signals to a PIO state machine that writes to GPIO outputs.
+The output is converted to analogue with the help of a simple R-2R DAC consisting of two resistors.
+Feel free to check out the [video part 1](https://www.youtube.com/watch?v=kgDOiGoxKvE) for a visual overview.
+
+## PIO state machines
+The PIO state machines are used not only receiving the TTL video data and writing the VGA video data, but also for other helper functions including:
+- Detecting no input signal: This checks if the horizontal sync signal is active.
+- Detecting the image offset: This counts the black border pixel until a non-black pixel is found across all lines. This count is used for centering the image automatically.
+- The EGA PIO state machine also does the Brown pixel fix because the overhead of doing that in a CPU core was too high.
+
+## Sampling clock
+The TTL video input is read by a PIO state-machine (one version for each video mode).
+But getting it to sample the pixels at the right time requires us adjust the sampling period in a precise way to match the TTL video card's internal pixel clock.
+Using the PIO clock divider does not give us a good-enough precision, because the fractional part of the divider is an 8-bit number, meaning that we get precision of ~0.004ns, but what we really need is about 0.001ns.
+So what we do is that we have multiple implementations of the state-machine code, each with a different sampling period and we look for the one that has the lowest division error using the PIO's 8-bit divider.
+This process is explained in more detail in the [video part 2](https://www.youtube.com/watch?v=Neg1WR7Hz5s).
 
 
 # SMD Version
@@ -73,7 +92,7 @@ Download gerbers: https://github.com/scrapcomputing/MCEBlaster/releases
 Reference      | Quantity     | Value                                                                  | Description
 ---------------|--------------|------------------------------------------------------------------------|------------
 C1             | 1            | Capacitor SMD 0.1uF 1206 (or disk ceramic for Through-Hole)            | Decoupling capacitor for level-shifter IC
-D1             | 1 (optional) | Schottky Diode THT                                                     | For alternative powering the MCE Blaster (instead of the Pico's micro-USB)
+D1             | 1 (optional) | Diode Through-hole (e.g., Schottky 1N5817 or silicon 1N4001)           | For powering the MCE Blaster from the PC (instead of the Pico's micro-USB)
 J2             | 1 (optional) | 1x02 through-hole Male PinHeader 2.54mm                                | For alternative external power
 J1             | 1            | DB9 Male Horizontal                                                    | For connecting to TTL video card
 J3             | 1            | DB15 Female HighDensity Connector                                      | For connectint to VGA monitor
