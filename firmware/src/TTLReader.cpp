@@ -127,12 +127,32 @@ void AutoAdjustBorder::resetBorders() {
   TmpYBorder = YBorderInit;
 }
 
-void AutoAdjustBorder::applyBorders() {
+void AutoAdjustBorder::applyBorders(Resolution Mode) {
   // Clear screen if borders have changed to avoid artifacts.
   if (XBorder != TmpXBorder || YBorder != TmpYBorder)
     Buff.clear();
+
+  // Update TTLReader's values.
   XBorder = TmpXBorder;
   YBorder = TmpYBorder;
+
+  switch (Mode) {
+  case CGA_640x200_60Hz:
+  case EGA_640x200_60Hz:
+    CGABorderOpt = BorderXY(XBorder, YBorder);
+    break;
+  case EGA_640x350_60Hz:
+    EGABorderOpt = BorderXY(XBorder, YBorder);
+    break;
+  case MDA_720x350_50Hz:
+    MDABorderOpt = BorderXY(XBorder, YBorder);
+    break;
+  }
+}
+
+void AutoAdjustBorder::setBorder(const BorderXY &XY) {
+  XBorder = XY.X;
+  YBorder = XY.Y;
 }
 
 void AutoAdjustBorder::forceStart(bool AlwaysON) {
@@ -168,16 +188,16 @@ void AutoAdjustBorder::tryPushButtonStart() {
   }
 }
 
-void AutoAdjustBorder::frameTick() {
+bool AutoAdjustBorder::frameTick(Resolution Mode) {
   if (Enabled == State::Off)
-    return;
+    return false;
   if (++ThrottleCnt % AUTO_ADJUST_THROTTLE_CNT == 0)
-    return;
+    return false;
   ++FrameCnt;
   if (FrameCnt == StartFrame) {
     resetBorders();
   } else if (FrameCnt == StopFrame) {
-    applyBorders();
+    applyBorders(Mode);
     DBG_PRINT(std::cout << "Auto Adust: XBorder=" << XBorder
                         << " YBorder=" << YBorder << "\n";)
     switch (Enabled) {
@@ -188,7 +208,9 @@ void AutoAdjustBorder::frameTick() {
       forceStart(/*AlwaysON=*/true);
       break;
     }
+    return true;
   }
+  return false;
 }
 
 void AutoAdjustBorder::collect(PIO Pio, uint32_t SM, uint32_t ModeBorderCounter,
@@ -270,13 +292,28 @@ void TTLReader::setTimingNOPs() {
 TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash)
     : PioLoader(PioLoader), AutoAdjustBtn(AUTO_ADJUST_GPIO, Pi, "AutoAdjust"),
       PxClkBtn(PX_CLK_BTN_GPIO, Pi, "PxClk"),
-      AutoAdjust(XBorder, YBorder, AutoAdjustBtn), Flash(Flash) {
+      AutoAdjust(XBorder, YBorder, CGABorderOpt, EGABorderOpt, MDABorderOpt,
+                 AutoAdjustBtn, Flash),
+      Flash(Flash) {
   // Load PIO clock dividers from Flash
   if (Flash.valid()) {
     DBG_PRINT(std::cout << "\nReading from flash...\n";)
     CGAPxClk = (uint32_t)Flash.read(CGAPxClkIdx);
     EGAPxClk = (uint32_t)Flash.read(EGAPxClkIdx);
     MDAPxClk = (uint32_t)Flash.read(MDAPxClkIdx);
+
+    auto ReadBorderSafe = [this, &Flash](int Idx) -> std::optional<BorderXY> {
+      uint32_t XY = (uint32_t)Flash.read(Idx);
+      // If 0xFFFFFFFF then it's not valid
+      if (XY == InvalidBorder)
+        return std::nullopt;
+      return BorderXY(XY);
+    };
+
+    CGABorderOpt = ReadBorderSafe(CGABorderIdx);
+    EGABorderOpt = ReadBorderSafe(EGABorderIdx);
+    MDABorderOpt = ReadBorderSafe(MDABorderIdx);
+
     DBG_PRINT(std::cout << "CGAPxClk=" << CGAPxClk << "\n";)
     DBG_PRINT(std::cout << "EGAPxClk=" << EGAPxClk << "\n";)
     DBG_PRINT(std::cout << "MDAPxClk=" << MDAPxClk << "\n";)
@@ -443,6 +480,19 @@ static std::pair<uint32_t, uint32_t> getIPPRange(Resolution M) {
   exit(1);
 }
 
+bool TTLReader::haveBorderFromFlash(Resolution M) const {
+  switch (M) {
+  case CGA_640x200_60Hz:
+  case EGA_640x200_60Hz:
+    return (bool)CGABorderOpt;
+  case EGA_640x350_60Hz:
+    return (bool)EGABorderOpt;
+  case MDA_720x350_50Hz:
+    return (bool)MDABorderOpt;
+  }
+  return false;
+}
+
 void TTLReader::switchPio() {
   PioLoader.unloadAllPio(TTLPio, {TTLSM, TTLBorderSM});
   DBG_PRINT(std::cout << "\nSwitching PIO to " << modeToStr(Buff.getMode())
@@ -526,7 +576,8 @@ void TTLReader::switchPio() {
   }
   }
 
-  AutoAdjust.forceStart(/*AlwaysON=*/false);
+  if (!haveBorderFromFlash(M))
+    AutoAdjust.forceStart(/*AlwaysON=*/false);
   Buff.clear();
 }
 
@@ -624,6 +675,23 @@ bool TTLReader::getVSyncPolarity() const {
   return LowNs > VertNs / 2 ? Pos : Neg;
 }
 
+void TTLReader::saveToFlash() {
+  DBG_PRINT(std::cout << "Saving to flash...\n";)
+  std::vector<int> FlashValues;
+  FlashValues.resize((int)MaxFlashIdx);
+  FlashValues[CGAPxClkIdx] = CGAPxClk;
+  FlashValues[EGAPxClkIdx] = EGAPxClk;
+  FlashValues[MDAPxClkIdx] = MDAPxClk;
+  FlashValues[CGABorderIdx] =
+      CGABorderOpt ? CGABorderOpt->getUint32() : InvalidBorder;
+  FlashValues[EGABorderIdx] =
+      EGABorderOpt ? EGABorderOpt->getUint32() : InvalidBorder;
+  FlashValues[MDABorderIdx] =
+      MDABorderOpt ? MDABorderOpt->getUint32() : InvalidBorder;
+  Flash.write(FlashValues);
+  DBG_PRINT(std::cout << "DONE!\n";)
+}
+
 bool TTLReader::tryChangePixelClock() {
   auto AutoAdjustBtnState = AutoAdjustBtn.get();
   auto PxClkBtnState = PxClkBtn.get();
@@ -649,19 +717,9 @@ bool TTLReader::tryChangePixelClock() {
   if (AdjPxClkMode == PxClkMode::None)
     return false;
 
-  auto SaveClksToFlash = [this] {
-    DBG_PRINT(std::cout << "Saving to flash...\n";)
-    std::vector<int> FlashValues;
-    FlashValues.resize(3);
-    FlashValues[CGAPxClkIdx] = CGAPxClk;
-    FlashValues[EGAPxClkIdx] = EGAPxClk;
-    FlashValues[MDAPxClkIdx] = MDAPxClk;
-    Flash.write(FlashValues);
-    DBG_PRINT(std::cout << "DONE!\n";)
-  };
   if (PxClkBtnState == ButtonState::LongPress) {
     // Save to flash and return.
-    SaveClksToFlash();
+    saveToFlash();
     Buff.displayTxt("PxCLK SAVED TO FLASH", 0, 0, DISPLAY_TXT_ZOOM,
                     /*Center=*/true);
     sleep_ms(PX_CLK_TXT_DISPLAY_MS + 1000);
@@ -679,7 +737,7 @@ bool TTLReader::tryChangePixelClock() {
       CGAPxClk = Timing[CGA_640x200_60Hz][PxClk];
       EGAPxClk = Timing[EGA_640x350_60Hz][PxClk];
       MDAPxClk = Timing[MDA_720x350_50Hz][PxClk];
-      SaveClksToFlash();
+      saveToFlash();
       getDividerAutomatically();
       switchPio();
       Buff.displayTxt("RESET OK", 0, 0, DISPLAY_TXT_ZOOM, /*Center=*/true);
@@ -751,7 +809,9 @@ void TTLReader::runForEver() {
     }
     MinY = std::min(MinY, MaxY);
 
-    AutoAdjust.frameTick();
+    bool BordersAdjusted = AutoAdjust.frameTick(Mode);
+    if (BordersAdjusted)
+      saveToFlash();
 
     AutoAdjustBtn.tick();
     PxClkBtn.tick();
@@ -773,6 +833,24 @@ void TTLReader::runForEver() {
         }
       }
     }
+
+    // Try set the border from flash values.
+    switch(Mode) {
+    case CGA_640x200_60Hz:
+    case EGA_640x200_60Hz:
+      if (CGABorderOpt)
+        AutoAdjust.setBorder(*CGABorderOpt);
+      break;
+    case EGA_640x350_60Hz:
+      if (EGABorderOpt)
+        AutoAdjust.setBorder(*EGABorderOpt);
+      break;
+    case MDA_720x350_50Hz:
+      if (MDABorderOpt)
+        AutoAdjust.setBorder(*MDABorderOpt);
+      break;
+    }
+
     // static uint32_t Cnt;
     // if (++Cnt % 128 == 0)
     //   DBG_PRINT(std::cout << " MaxY=" << MaxY << " MaxX=" << MaxX

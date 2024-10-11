@@ -7,6 +7,7 @@
 #define __TIMINGSVGA_H__
 
 #include <optional>
+#include <cstdlib>
 
 enum LineSection {
   H_FrontPorch = 0,

@@ -25,9 +25,32 @@
 using ButtonTy = Button</*OffVal=*/true, /*DebounceSz=*/2,
                         /*LongPressCntVal=*/BTN_LONG_PRESS_FRAMES>;
 
+/// Helper class for the border x,y data.
+class BorderXY {
+public:
+  BorderXY(uint32_t X, uint32_t Y) : X(X), Y(Y) {}
+  BorderXY(uint32_t XY) {
+    X = XY & 0xffff;
+    Y = (XY >> 16) & 0xffff;
+  }
+  uint16_t X;
+  uint16_t Y;
+  uint32_t getUint32() const {
+    uint32_t Val = X;
+    uint32_t Y32 = Y;
+    Val |= (Y32 << 16);
+    return Val;
+  }
+};
+
 class AutoAdjustBorder {
+  // These are references to TTLReader values.
   uint32_t &XBorder;
   uint32_t &YBorder;
+  std::optional<BorderXY> &CGABorderOpt;
+  std::optional<BorderXY> &EGABorderOpt;
+  std::optional<BorderXY> &MDABorderOpt;
+
 
   uint32_t TmpXBorder = 0;
   uint32_t TmpYBorder = 0;
@@ -44,20 +67,30 @@ class AutoAdjustBorder {
   uint32_t FrameCnt = 0;
   uint32_t ThrottleCnt = 0;
   ButtonTy &Btn;
+  FlashStorage &Flash;
   static constexpr const uint32_t XBorderInit = 164;
   static constexpr const uint32_t YBorderInit = 64;
   inline void resetBorders();
-  inline void applyBorders();
+  inline void applyBorders(Resolution Mode);
 
 public:
-  AutoAdjustBorder(uint32_t &XBorder, uint32_t &YBorder, ButtonTy &Btn)
-    : XBorder(XBorder), YBorder(YBorder), Btn(Btn) {}
+  AutoAdjustBorder(uint32_t &XBorder, uint32_t &YBorder,
+                   std::optional<BorderXY> &CGABorderOpt,
+                   std::optional<BorderXY> &EGABorderOpt,
+                   std::optional<BorderXY> &MDABorderOpt, ButtonTy &Btn,
+                   FlashStorage &Flash)
+      : XBorder(XBorder), YBorder(YBorder), CGABorderOpt(CGABorderOpt),
+        EGABorderOpt(EGABorderOpt), MDABorderOpt(MDABorderOpt), Btn(Btn),
+        Flash(Flash) {}
   void forceStart(bool AlwaysON);
   void tryPushButtonStart();
   void collect(PIO Pio, uint32_t SM, uint32_t ModeBorderCounter, uint32_t Line,
                Resolution M);
-  void frameTick();
+  /// Gets called on every frame. Returns if borders were applied.
+  bool frameTick(Resolution Mode);
   bool isAlwaysON() const { return Enabled == State::AlwaysON; }
+  /// Used to set the borders when stored in flash.
+  void setBorder(const BorderXY &XY);
 };
 
 class TTLReader {
@@ -96,13 +129,24 @@ class TTLReader {
   ClkDivider MDAClkDiv{1, 66};
 
   // Flash entries
-  static constexpr const int CGAPxClkIdx = 0;
-  static constexpr const int EGAPxClkIdx = 1;
-  static constexpr const int MDAPxClkIdx = 2;
+  enum {
+    CGAPxClkIdx = 0,
+    EGAPxClkIdx,
+    MDAPxClkIdx,
+    CGABorderIdx,
+    EGABorderIdx,
+    MDABorderIdx,
+    MaxFlashIdx,
+  };
+  static constexpr const uint32_t InvalidBorder = 0xffffffff;
 
   uint32_t CGAPxClk = Timing[CGA_640x200_60Hz][PxClk];
   uint32_t EGAPxClk = Timing[EGA_640x350_60Hz][PxClk];
   uint32_t MDAPxClk = Timing[MDA_720x350_50Hz][PxClk];
+
+  std::optional<BorderXY> CGABorderOpt;
+  std::optional<BorderXY> EGABorderOpt;
+  std::optional<BorderXY> MDABorderOpt;
 
   uint32_t &getPxClkFor(Resolution M);
   /// Increments the clock divider that corresponds to the current mode.
@@ -134,11 +178,17 @@ class TTLReader {
   /// Updates the PIO's timing NOPs based on the current display mode.
   void setTimingNOPs() ;
 
+  /// \Returns true if we have read a valid border for mode \p M from flash.
+  bool haveBorderFromFlash(Resolution M) const;
+
   void switchPio();
 
   void getDividerAutomatically();
 
   bool getVSyncPolarity() const;
+
+  /// Save settings to flash.
+  void saveToFlash();
 
   bool tryChangePixelClock();
 

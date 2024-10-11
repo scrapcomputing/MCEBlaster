@@ -7,6 +7,8 @@
 #define __XPM2_H__
 
 #include <unordered_map>
+#include <cstdint>
+#include <cstdio>
 
 class DisplayBuffer;
 
