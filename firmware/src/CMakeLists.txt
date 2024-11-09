@@ -4,8 +4,9 @@ cmake_minimum_required(VERSION 3.13)
 # -----
 # $ mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DPICO_FREQ=270000 -DPICO_SDK_PATH=/path/to/pico-sdk/ ../src/ && make -j
 #
-# Options
+# Options NOTE: don't use 'off' to disable, just remove the argument.
 # -------
+# o -DFULL_FLASH_FREQ=on to disable reducing the flash frequency
 # o -DDISABLE_PICO_LED=on to disable the Pico's blinking LED.
 # o -DDBGPRINT=on to enable debug messages
 # o -DPICO_FREQ=<KHz> to set the Pico's frequency
@@ -54,6 +55,14 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Werror ${EXTRA_DBG_FL
 # rest of your project
 file(GLOB SOURCES *.c *.cpp *.h *.def)
 add_executable(${PROJECT_NAME} ${SOURCES})
+
+# The 270MHz frequency may be too high for the flash, so use a divider
+if (NOT DEFINED FULL_FLASH_FREQ)
+   message("-> Using reduced flash frequency!")
+   pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
+   target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
+   pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
+endif ()
 
 include(EGAPio.cmake)
 include(CGAPio.cmake)
@@ -106,6 +115,7 @@ message("DISABLE_USB_DBG = ${DISABLE_USB_DBG}")
 message("PICO_LED = ${PICO_LED}")
 message("PICO_FREQ = ${PICO_FREQ} (KHz)")
 message("PICO_VOLTAGE = ${PICO_VOLTAGE}")
+message("FULL_FLASH_FREQ = ${FULL_FLASH_FREQ}")
 
 
 # End of configuration
