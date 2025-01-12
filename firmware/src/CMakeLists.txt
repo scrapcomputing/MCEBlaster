@@ -18,7 +18,7 @@ cmake_minimum_required(VERSION 3.13)
 #                      VREG_VOLTAGE_1_30 1.30v
 
 #
-# This will place the firmware into: build/MCE1VGA.uf2
+# This will place the firmware into: build/MCEBlaster.uf2
 #
 # For example: minicom -b 115200 -D /dev/ttyACM0. Serial connection: 115200 8N1
 
