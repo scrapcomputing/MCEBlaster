@@ -95,7 +95,7 @@ C1             | 1            | Capacitor SMD 0.1uF 1206 (or disk ceramic for Th
 D1             | 1 (optional) | Diode Through-hole (e.g., Schottky 1N5817 or silicon 1N4001)           | For powering the MCE Blaster from the PC (instead of the Pico's micro-USB)
 J2             | 1 (optional) | 1x02 through-hole Male PinHeader 2.54mm                                | For alternative external power
 J1             | 1            | DB9 Male Horizontal                                                    | For connecting to TTL video card
-J3             | 1            | DB15 Female HighDensity Connector                                      | For connectint to VGA monitor
+J3             | 1            | DB15 Female HighDensity Connector (e.g., Kycon K61X-E15S-NJ-VESA, thanks @wrljet) | For connectint to VGA monitor
 R3 R4 R6       | 3            | 422 Ohm 1206 SMD (or Through-hole) resistor 1% (alternatively 470 Ohm) | For VGA signal DAC
 R2 R5 R7       | 3            | 845 Ohm 1206 SMD (or Through-hole) resistor 1% (alternatively 1K Ohm)  | For VGA signal DAC
 SW1,SW2        | 1            | 6mm Through-hole push button                                           | Auto-adjust and pixel-clock buttons
