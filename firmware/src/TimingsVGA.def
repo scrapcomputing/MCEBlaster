@@ -1,0 +1,18 @@
+//
+// Note: F/B porch includes black borders.
+//                                                        Pos: ___|~|___
+//
+//                                                        Neg: ~~~|_|~~~
+//
+//
+//                              Horizontal             Vertical     Polarity
+//                        ---------------------   --------------- ----------
+//                        F   Vis     B    Sync   F  Vis   B Sync HSync VSync H_Hz V_Hz  PxClk
+DEF_VGA(VGA_640x400_70Hz, 16, 640+XB, 48, 96-XB, 12, 400, 35,  2,  Neg,  Pos, 31469, 70, 25175000)
+DEF_VGA(VGA_640x480_60Hz, 16, 640+XB, 48, 96-XB, 10, 480, 33,  2,  Neg,  Neg, 31469, 60, 25175000)
+DEF_VGA(VGA_800x600_56Hz, 32, 800+XB,128,128-XB,  1, 600, 22,  2,  Pos,  Pos, 35156, 56, 35156000)
+
+
+#ifdef DEF_VGA
+#undef DEF_VGA
+#endif

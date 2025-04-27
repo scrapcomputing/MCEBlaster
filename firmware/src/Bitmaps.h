@@ -134,6 +134,17 @@ static constexpr const uint8_t Char_A[] {
   0b00000000,
 };
 
+static constexpr const uint8_t Char_B[] {
+  0b00000000,
+  0b01111100,
+  0b01100110,
+  0b01101100,
+  0b01111110,
+  0b01100110,
+  0b01111100,
+  0b00000000,
+};
+
 static constexpr const uint8_t Char_C[] {
   0b00000000,
   0b00111100,
@@ -288,6 +299,17 @@ static constexpr const uint8_t Char_P[] {
   0b00000000,
 };
 
+static constexpr const uint8_t Char_Q[] {
+  0b00000000,
+  0b00111100,
+  0b01100110,
+  0b01100110,
+  0b01100110,
+  0b01101110,
+  0b00111011,
+  0b00000000,
+};
+
 static constexpr const uint8_t Char_R[] {
   0b00000000,
   0b01111100,
@@ -373,6 +395,28 @@ static constexpr const uint8_t Char_Y[] {
   0b00011000,
   0b00011000,
   0b00011000,
+  0b00000000,
+};
+
+static constexpr const uint8_t Char_Z[] {
+  0b00000000,
+  0b01111110,
+  0b00000110,
+  0b00001100,
+  0b00011000,
+  0b00110000,
+  0b01111110,
+  0b00000000,
+};
+
+static constexpr const uint8_t Char_v[] {
+  0b00000000,
+  0b00000000,
+  0b00000000,
+  0b11000110,
+  0b01101100,
+  0b00111000,
+  0b00010000,
   0b00000000,
 };
 
@@ -464,6 +508,73 @@ static constexpr const uint8_t Char_SPACE[] {
   0b00000000,
   0b00000000,
 };
+
+static constexpr const uint8_t Char_DASH[] {
+  0b00000000,
+  0b00000000,
+  0b00000000,
+  0b00000000,
+  0b01111111,
+  0b00000000,
+  0b00000000,
+  0b00000000,
+};
+
+static constexpr const uint8_t Char_GT[] {
+  0b00000000,
+  0b00100000,
+  0b00010000,
+  0b00001000,
+  0b00000100,
+  0b00001000,
+  0b00010000,
+  0b00100000,
+};
+
+static constexpr const uint8_t Char_PLUS[] {
+  0b00000000,
+  0b00000000,
+  0b00010000,
+  0b00010000,
+  0b01111100,
+  0b00010000,
+  0b00010000,
+  0b00000000,
+};
+
+static constexpr const uint8_t Char_MINUS[] {
+  0b00000000,
+  0b00000000,
+  0b00000000,
+  0b00000000,
+  0b01111100,
+  0b00000000,
+  0b00000000,
+  0b00000000,
+};
+
+static constexpr const uint8_t Char_SQBR_OPEN[] {
+  0b00000000,
+  0b01111110,
+  0b01000000,
+  0b01000000,
+  0b01000000,
+  0b01000000,
+  0b01111110,
+  0b00000000,
+};
+
+static constexpr const uint8_t Char_SQBR_CLOSE[] {
+  0b00000000,
+  0b01111110,
+  0b00000010,
+  0b00000010,
+  0b00000010,
+  0b00000010,
+  0b01111110,
+  0b00000000,
+};
+
 
 // clang-format on
 

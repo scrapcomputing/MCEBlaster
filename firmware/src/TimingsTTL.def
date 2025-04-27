@@ -1,0 +1,18 @@
+//
+// Note: F/B porch includes black borders.
+//                                                        Pos: ___|~|___
+//
+//                                                        Neg: ~~~|_|~~~
+//
+//                             Horizontal                  Vertical         Polarity
+//                        ------------------------   --------------------- ----------
+//                        F   Vis       B  Retrace   F  Vis      B Retrace HSync VSync H_Hz V_Hz  PxCl
+DEF_TTL(MDA_720x350_50Hz, 16, 720+XB, 20-XB, 126,   20, 350+YB,  4-YB, 16,  Pos,  Neg, 18430, 50, 16257000, TTL::MDA)
+DEF_TTL(CGA_640x200_60Hz, 68, 640+XB, 40-XB, 163,   32, 200+YB, 28-YB,  3,  Pos,  Pos, 15700, 60, 14318181, TTL::CGA)
+DEF_TTL(EGA_640x200_60Hz, 68, 640+XB, 40-XB, 163,   20, 200+YB, 40-YB,  3,  Pos,  Pos, 15700, 60, 14318181, TTL::EGA)
+DEF_TTL(EGA_640x350_60Hz, 28, 640+XB, 20-XB,  56,    4, 350+YB, 56-YB,  3,  Pos,  Neg, 21850, 60, 16257000, TTL::EGA)
+
+
+#ifdef DEF_TTL
+#undef DEF_TTL
+#endif

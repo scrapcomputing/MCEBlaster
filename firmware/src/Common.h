@@ -8,8 +8,6 @@
 
 #include <cstdint>
 
-static constexpr const uint32_t NoSignalCheckFreq = 2; // Must be power of 2!
-
 static constexpr const uint32_t VGA_RGB_GPIO = 14; // 14-19, 2 bits per color
 static constexpr const uint32_t VGA_MDA_GPIO = 18;
 static constexpr const uint32_t VGA_HSync_GPIO = 20;
@@ -30,13 +28,37 @@ static constexpr const int DEBOUNCE_SZ = 2;
 static constexpr const int LONGPRESS_CNT = 60;
 
 /// Cancel pixel clock adjustment after this many frames of inactivity.
-static constexpr const uint32_t ADJUST_PX_CLK_CNT = 5 * 60;
-static constexpr const int PX_CLK_INITIAL_TXT_DISPLAY_MS = 3000;
-static constexpr const int PX_CLK_RESET_DISPLAY_MS = 2000;
-static constexpr const int PX_CLK_TXT_DISPLAY_MS = 300;
+static constexpr const uint32_t PX_CLK_END_TIME_MS = 12000;
+static constexpr const int PX_CLK_INITIAL_TXT_DISPLAY_MS = PX_CLK_END_TIME_MS;
+static constexpr const int PX_CLK_TXT_DISPLAY_MS = PX_CLK_END_TIME_MS;
+static constexpr const int PX_CLK_EXIT_DISPLAY_MS = 2000;
 static constexpr const int AUTO_ADJUST_DISPLAY_MS = 150;
 static constexpr const int AUTO_ADJUST_ALWAYS_ON_DISPLAY_MS = 2000;
-static constexpr const int DISPLAY_TXT_ZOOM = 3;
+
+static constexpr const int RESET_TO_DEFAULTS_DISPLAY_MS = 1000;
+
+static constexpr const uint32_t MANUAL_TTL_TIMEOUT_MS = 12000;
+static constexpr const int MANUAL_TTL_DISPLAY_MS = MANUAL_TTL_TIMEOUT_MS - 200;
+static constexpr const uint32_t MANUAL_TTL_DISPLAY_DONE_MS = 1000;
+static constexpr const uint32_t MANUAL_TTL_DISPLAY_SAVED_MS = 3000;
+static constexpr const uint32_t MANUAL_TTL_HORIZ_STEP = 1;
+static constexpr const uint32_t MANUAL_TTL_VERT_STEP = 1;
+static constexpr const uint32_t MANUAL_TTL_HORIZ_MIN = 100;
+static constexpr const uint32_t MANUAL_TTL_VERT_MIN = 100;
+static constexpr const uint32_t MANUAL_TTL_XBORDER_STEP = 4;
+static constexpr const uint32_t MANUAL_TTL_YBORDER_STEP = 1;
+static constexpr const uint32_t MANUAL_TTL_MAX_XBORDER = 400;
+static constexpr const uint32_t MANUAL_TTL_MAX_YBORDER = 200;
+
+
+static constexpr const uint32_t NO_TTL_SIGNAL_MS = 800;
+static constexpr const uint32_t UNKNOWN_MODE_MS = 2000;
+static constexpr const uint32_t UNKNOWN_MODE_SHOW_MSG_COUNT = 3;
+static constexpr const int TTL_MOD = 4;
+
+static constexpr const uint32_t LED_FRAME_MOD = 128;
+static constexpr const uint32_t LED_MOD_ON = 0;
+static constexpr const uint32_t LED_MOD_OFF = 64;
 
 /// Adjust every this many frames to avoid artifacts.
 static constexpr const uint32_t AUTO_ADJUST_THROTTLE_CNT = 4;
@@ -46,7 +68,7 @@ static constexpr const uint32_t AUTO_ADJUST_START_AFTER = 2;
 static constexpr const uint32_t AUTO_ADJUST_DURATION = 16;
 
 /// Button LongPress cnt (in frames)
-static constexpr const int BTN_LONG_PRESS_FRAMES = 120;
+static constexpr const int BTN_LONG_PRESS_FRAMES = 60;
 
 
 static constexpr const uint32_t Black = 0b000000;

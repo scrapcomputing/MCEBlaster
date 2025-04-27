@@ -87,7 +87,6 @@ public:
   ButtonState get() const {
     return State;
   }
-
 };
 
 #endif // __BUTTON_H__

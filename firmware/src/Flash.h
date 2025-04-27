@@ -12,10 +12,13 @@
 #include <vector>
 
 class FlashStorage {
-  // Use the last sector (4KB) of the 2MB flash.
-  static constexpr const int BaseOffset = 2 * (1u << 20) - FLASH_SECTOR_SIZE;
-  static constexpr const int BytesToFlash = FLASH_SECTOR_SIZE;
-  std::vector<int> MagicNumber = {12131111, 41, 0, 667, 13121111};
+  // Erase the last sector (4KB) of the 2MB flash, but write the last page (256
+  // bytes).
+  static constexpr const int BytesToErase = FLASH_SECTOR_SIZE;
+  static constexpr const int BytesToWrite = FLASH_PAGE_SIZE;
+  static constexpr const int EraseBaseOffset = 2 * (1u << 20) - BytesToErase;
+  static constexpr const int WriteBaseOffset = 2 * (1u << 20) - BytesToWrite;
+  std::vector<int> MagicNumber = {12131111, 42, 0, 667, 13121111};
 
   /// Points to the first usable int ptr, after the magic number and revision.
   const int *FlashArray = nullptr;

@@ -11,6 +11,7 @@
 #include <cstdio>
 
 class DisplayBuffer;
+class TTLDescr;
 
 class XPM2 {
   int Width;
@@ -27,7 +28,7 @@ class XPM2 {
     for (int ColorIdx = 0; ColorIdx != NumColors; ++ColorIdx) {
       char Char;
       uint32_t Color;
-      sscanf(XPMArray[ColorIdx + 1], "%c c #%x", &Char, &Color);
+      sscanf(XPMArray[ColorIdx + 1], "%c c #%lx", &Char, &Color);
       uint8_t R = (Color & 0xc00000) >> 18;
       uint8_t G = (Color & 0x00c000) >> 12;
       uint8_t B = (Color & 0x0000c0) >> 6;
@@ -35,15 +36,12 @@ class XPM2 {
     }
   }
 
-  void parseBody(DisplayBuffer &DBuff, int OffsetX, int OffsetY, int Zoom) ;
-
 public:
   XPM2(const char **XPMArray) : XPMArray(XPMArray) { parseHeader(); }
   uint32_t height() const { return Height; }
   uint32_t width() const { return Width; }
-  void show(DisplayBuffer &DBuff, int OffsetX, int OffsetY, int Zoom = 2) {
-    parseBody(DBuff, OffsetX, OffsetY, Zoom);
-  }
+  void show(DisplayBuffer &DBuff, const TTLDescr &TimingsTTL, int OffsetX,
+            int OffsetY, int Zoom = 2);
 };
 
 #endif // __XPM2_H__

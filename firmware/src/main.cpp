@@ -9,21 +9,10 @@
 #include "Pico.h"
 #include "TTLReader.h"
 #include "VGAWriter.h"
-#include <pico/multicore.h>
 
 FlashStorage *Flash = nullptr;
 Pico *Pi = nullptr;
 PioProgramLoader *PPL = nullptr;
-
-static void core1_main() {
-  TTLReader TTLR(*PPL, *Pi, *Flash);
-  TTLR.runForEver();
-}
-
-static void core0_main_loop(Pico &Pico, FlashStorage &Flash) {
-  VGAWriter VGAW(Pico, *PPL);
-  VGAW.runForEver();
-}
 
 // Hack for linking error: undefined reference to `__dso_handle'
 static void *__dso_handle = 0;
@@ -36,7 +25,7 @@ int main() {
   Pi = &Pico;
   critical_section_init(&UnusedPIOLock);
 
-  DBG_PRINT(sleep_ms(1000);)
+  DBG_PRINT(sleep_ms(1500);)
   DBG_PRINT(std::cout << PROJECT_NAME << " rev." << REVISION_MAJOR << "."
                       << REVISION_MINOR << "\n";)
   Pico.initGPIO(PICO_DEFAULT_LED_PIN, GPIO_OUT, Pico::Pull::Down, "LED");
@@ -59,7 +48,7 @@ int main() {
   PioProgramLoader PioLoader;
   PPL = &PioLoader;
 
-  multicore_launch_core1(core1_main);
-  core0_main_loop(Pico, FlashMain);
+  VGAWriter VGAW(Pico, *PPL);
+  VGAW.runForEver();
   return 0;
 }

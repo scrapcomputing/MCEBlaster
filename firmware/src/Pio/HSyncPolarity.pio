@@ -1,0 +1,61 @@
+;; Copyright (C) 2025 Scrap Computing
+;
+; We detect the polarity by sampling Sync with a period such that 32 samples
+; take longer than the period of Sync. We pack the 32 1-bit samples into a
+; 32-bit word and push it to the Fifo.
+;
+; The longest Sync period is ~70us (see below) so as long as we have a sampling
+; period larger than 70us/32 = 2187ns
+;
+; At 270MHz each PIO instruction takes ~3.7ns, sampling takes 8 instructions.
+; So we need to slow-down the PIO clock. Using a divider of 74 corresponds
+; to rougly a sampling period of 3.7ns * 8 * 74  = 2190ns
+;
+;
+;                     HSync
+;                     =====
+;
+;           54.3us     8us
+; MDA:  ______________|~~|______________|~~|___
+;
+;           63.7us     4us
+; CGA:  ______________|~~|______________|~~|___
+;
+;           63.7us    4.5us
+; EGA1: ______________|~~|______________|~~|___
+;
+;           45.8us    5us
+; EGA2: ______________|~~|______________|~~|___
+;
+;
+;               Source: https://minuszerodegrees.net/mda_cga_ega/mda_cga_ega.htm
+
+
+.program HSyncPolarity
+
+; Counts (down) while HSync is low and pushes counter value to FIFO.
+
+  .wrap_target
+  in pins, 1 [7]                    ; ISR <<= SYNC (1 bit), autopush at 32
+  .wrap ; jmp reset_counter
+
+
+% c-sdk {
+static inline void HSyncPolarityPioConfig(PIO Pio, uint SM, uint Offset, uint HSyncGPIO) {
+   pio_sm_config Conf = HSyncPolarity_program_get_default_config(Offset);
+   // Shift to the left, auto-push
+   sm_config_set_in_shift(&Conf, /*shift_right=*/false, /*autopush=*/true,
+                                 /*push_threshold=*/32);
+
+   sm_config_set_in_pins(&Conf, HSyncGPIO);
+
+   // Clock divider
+   sm_config_set_clkdiv_int_frac(&Conf, /*DivInt=*/74, /*DivFrac=*/0);
+
+   // Initializations
+   // Set pin direction
+   pio_sm_set_consecutive_pindirs(Pio, SM, HSyncGPIO, 1, /*is_out=*/false);
+
+   pio_sm_init(Pio, SM, Offset, &Conf);
+}
+%}

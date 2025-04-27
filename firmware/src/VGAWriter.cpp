@@ -4,28 +4,42 @@
 //
 
 #include "VGAWriter.h"
+#include "HSyncPolarity.pio.h"
 #include "NoInputSignal.pio.h"
+#include "TTLReader.h"
 #include "VGAOut4x1Pixels.pio.h"
 #include "VGAOut8x1MDA.pio.h"
+#include "VSyncPolarity.pio.h"
 #include <config.h>
 #include <pico/multicore.h>
 #include <unordered_map>
 
+static bool ResetToDefaults = false;
 DisplayBuffer Buff;
+static TTLReader *TTLReaderPtr = nullptr;
+extern PioProgramLoader *PPL;
+extern Pico *Pi;
+extern FlashStorage *Flash;
+
+static PIO VSyncPolarityPio_ = 0;
+static int VSyncPolaritySM_ = 0;
+static PIO HSyncPolarityPio_ = 0;
+static int HSyncPolaritySM_ = 0;
 
 void VGAWriter::DrawBlackLineWithMask4x1(bool InVertSync) {
   static constexpr auto M = VGA_640x400_70Hz;
 
-  static constexpr bool HPolarity = Timing[M][H_SyncPolarity];
-  static constexpr bool VPolarity = Timing[M][V_SyncPolarity];
+  static constexpr Polarity HPolarity = TimingsVGA[M].H_SyncPolarity;
+  static constexpr Polarity VPolarity = TimingsVGA[M].V_SyncPolarity;
   auto Black4_Main = Black_4;
   if constexpr (HPolarity == Neg)
     Black4_Main |= HMask_4;
   if ((VPolarity == Neg && !InVertSync) || (VPolarity == Pos && InVertSync))
     Black4_Main |= VMask_4;
 
-  for (unsigned i = 0; i < Timing[M][H_FrontPorch] + Timing[M][H_Visible] +
-                               Timing[M][H_BackPorch];
+  for (unsigned i = 0;
+       i < TimingsVGA[M].H_FrontPorch + TimingsVGA[M].H_Visible +
+               TimingsVGA[M].H_BackPorch;
        i += 4)
     pio_sm_put_blocking(VGAPio, VGASM, Black4_Main);
 
@@ -34,7 +48,7 @@ void VGAWriter::DrawBlackLineWithMask4x1(bool InVertSync) {
     Black4_InHSync |= HMask_4;
   if ((VPolarity == Neg && !InVertSync) || (VPolarity == Pos && InVertSync))
     Black4_InHSync |= VMask_4;
-  for (unsigned i = 0; i < Timing[M][H_Sync]; i += 4)
+  for (unsigned i = 0; i < TimingsVGA[M].H_Retrace; i += 4)
     pio_sm_put_blocking(VGAPio, VGASM, Black4_InHSync);
 }
 
@@ -43,20 +57,20 @@ void VGAWriter::DrawLineVSyncHigh4x1(unsigned Line) {
   // VSync is High throughout.
   // HSync is High for the boarders + visible parts.
 
-  static constexpr bool HPolarity = Timing[M][H_SyncPolarity];
-  static constexpr bool VPolarity = Timing[M][V_SyncPolarity];
+  static constexpr Polarity HPolarity = TimingsVGA[M].H_SyncPolarity;
+  static constexpr Polarity VPolarity = TimingsVGA[M].V_SyncPolarity;
   auto Black4_Porch = Black_4;
-  if constexpr (HPolarity == Neg)
+  if constexpr (HPolarity == Polarity::Neg)
     Black4_Porch |= HMask_4;
-  if constexpr (VPolarity == Neg)
+  if constexpr (VPolarity == Polarity::Neg)
     Black4_Porch |= VMask_4;
 
   // Front Porch is black.
-  for (unsigned i = 0; i < Timing[M][H_FrontPorch]; i += 4)
+  for (unsigned i = 0; i < TimingsVGA[M].H_FrontPorch; i += 4)
     pio_sm_put_blocking(VGAPio, VGASM, Black4_Porch);
 
   // The visible part of the line.
-  for (unsigned i = 0; i < Timing[M][H_Visible]; i += 4) {
+  for (unsigned i = 0; i < TimingsVGA[M].H_Visible; i += 4) {
     uint32_t Pix4 = Buff.get32(Line, i);
     if constexpr (HPolarity == Neg)
       Pix4 |= HMask_4;
@@ -66,7 +80,7 @@ void VGAWriter::DrawLineVSyncHigh4x1(unsigned Line) {
   }
 
   // Back Porch is black
-  for (unsigned i = 0; i < Timing[M][H_BackPorch]; i += 4)
+  for (unsigned i = 0; i < TimingsVGA[M].H_BackPorch; i += 4)
     pio_sm_put_blocking(VGAPio, VGASM, Black4_Porch);
 
   // Sync.
@@ -76,20 +90,21 @@ void VGAWriter::DrawLineVSyncHigh4x1(unsigned Line) {
   if constexpr (VPolarity == Neg)
     Black4_Sync |= VMask_4;
 
-  for (unsigned i = 0; i != Timing[M][H_Sync]; i += 4)
+  for (unsigned i = 0; i != TimingsVGA[M].H_Retrace; i += 4)
     pio_sm_put_blocking(VGAPio, VGASM, Black4_Sync);
 }
 
 void VGAWriter::DrawBlackLineWithMaskMDA8x1(uint32_t Mask_8) {
   static constexpr auto M = VGA_800x600_56Hz;
   const uint32_t BlackMDA_8_HM = BlackMDA_8 | HMaskMDA_8 | Mask_8;
-  for (unsigned i = 0; i < Timing[M][H_FrontPorch] + Timing[M][H_Visible] +
-                               Timing[M][H_BackPorch];
+  for (unsigned i = 0;
+       i < TimingsVGA[M].H_FrontPorch + TimingsVGA[M].H_Visible +
+               TimingsVGA[M].H_BackPorch;
        i += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HM);
 
   const uint32_t BlackMDA_8_M = BlackMDA_8 | Mask_8;
-  for (unsigned i = 0; i < Timing[M][H_Sync]; i += 8)
+  for (unsigned i = 0; i < TimingsVGA[M].H_Retrace; i += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_M);
 }
 
@@ -98,47 +113,50 @@ void VGAWriter::DrawLineVSyncHighMDA8x1(unsigned Line) {
   // VSync is High throughout.
   // HSync is High for the boarders + visible parts.
   // Front Porch
-  for (unsigned i = 0; i < Timing[M][H_FrontPorch]; i += 8)
+  for (unsigned i = 0; i < TimingsVGA[M].H_FrontPorch; i += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
 
-  // Centering Margins
-  static constexpr uint32_t MarginY =
-    (Timing[M][V_Visible] - Timing[MDA_720x350_50Hz][V_Visible]) / 2;
+  // Visible TTL is 720 pixels but VGA is 800 so we need to fill the gap with
+  // black such that the image can get centered proplerly.
+  unsigned TTL_VGA_VisibleGap =
+      TimingsVGA[M].H_Visible - TimingsVGA[M].H_Visible;
+  unsigned LeftBlackForCentering =
+      TTL_VGA_VisibleGap / /* left half: */ 2 / /* pixels per call: */ 8;
+  for (unsigned i = 0; i < LeftBlackForCentering; i += 8)
+    pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
 
-  if (Line >= MarginY && Line < Timing[MDA_720x350_50Hz][V_Visible] + MarginY) {
-    uint32_t BufferLine = Line - MarginY;
-    // Not sure why, but if we print 720 pixels here we get a cropped image.
-    // So instead we are printing the full 800 pixels.
-    for (unsigned X = 0, E = Timing[M][H_Visible]; X < E; X += 8) {
-      uint32_t Pixels8_HV = Buff.getMDA32(BufferLine, X) | HVMaskMDA_8;
-      pio_sm_put_blocking(VGAPio, VGASM, Pixels8_HV);
-    }
-  } else {
-    for (unsigned X = 0, E = Timing[M][H_Visible]; X < E; X += 8) {
-      pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
-    }
+  // The visible part of the line.
+  for (unsigned X = 0, E = TimingsVGA[M].H_Visible; X < E; X += 8) {
+    uint32_t Pixels8_HV = Buff.getMDA32(Line, X) | HVMaskMDA_8;
+    pio_sm_put_blocking(VGAPio, VGASM, Pixels8_HV);
   }
 
+  // Fill the right hand side Visible TTL-VGA gap with black pixels.
+  unsigned RightBlackForCentering = TTL_VGA_VisibleGap - LeftBlackForCentering;
+  for (unsigned i = 0; i < RightBlackForCentering; i += 8)
+    pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
+
   // Right Border is black
-  for (unsigned i = 0; i < Timing[M][H_BackPorch]; i += 8)
+  for (unsigned i = 0; i < TimingsVGA[M].H_BackPorch; i += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
 
   // Retrace: HSync is Low.
-  for (unsigned i = 0; i < Timing[M][H_Sync]; i += 8)
+  for (unsigned i = 0; i < TimingsVGA[M].H_Retrace; i += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_V);
 }
 
 void VGAWriter::tryChangePIOMode() {
-  auto CurrMode = Buff.getMode();
-  if (CurrMode == LastMode)
+  TimingsTTL = TTLReaderPtr->getMode();
+
+  if (TimingsTTL == LastMode)
     return;
-  LastMode = CurrMode;
-  DBG_PRINT(std::cout << "VGAWriter: Change PIO Mode: " << modeToStr(CurrMode)
-                      << "\n";)
-  switch (CurrMode) {
-  case CGA_640x200_60Hz:
-  case EGA_640x200_60Hz:
-  case EGA_640x350_60Hz:
+  LastMode = TimingsTTL;
+  Buff.setMode(TimingsTTL);
+  DBG_PRINT(std::cout << "VGAWriter: Change PIO Mode: "
+                      << modeToStr(TimingsTTL.Mode) << "\n";)
+  switch (TimingsTTL.Mode) {
+  case TTL::CGA:
+  case TTL::EGA:
     VGAOffset = PioLoader.loadPIOProgram(
         VGAPio, VGASM, &VGAOut4x1Pixels_program,
         [](PIO Pio, uint SM, uint Offset) {
@@ -147,7 +165,7 @@ void VGAWriter::tryChangePIOMode() {
     pio_sm_put_blocking(VGAPio, VGASM, VGADarkYellow);
     pio_sm_put_blocking(VGAPio, VGASM, VGABrown);
     break;
-  case MDA_720x350_50Hz:
+  case TTL::MDA:
     VGAOffset = PioLoader.loadPIOProgram(VGAPio, VGASM, &VGAOut8x1MDA_program,
                                          [](PIO Pio, uint SM, uint Offset) {
                                            VGAOut8x1MDAPioConfig(
@@ -158,104 +176,217 @@ void VGAWriter::tryChangePIOMode() {
     DBG_PRINT(std::cout << "ERROR: no mode found!\n";)
     break;
   }
+  DBG_PRINT(std::cout << "VGAWriter:: done changing PIO\n";)
 }
 
-extern critical_section UnusedPIOLock;
-
 VGAWriter::VGAWriter(Pico &Pico, PioProgramLoader &PioLoader)
-    : PioLoader(PioLoader) {
+    : Pi(Pico), PioLoader(PioLoader) {
   // Required for when the other core is writing to flash.
   multicore_lockout_victim_init();
 
-  // TODO: The lock should not be needed since we are using a different Pio.
-  critical_section_enter_blocking(&UnusedPIOLock);
-  VGASM = pio_claim_unused_sm(VGAPio, true);
-  NoInputSignalSM = pio_claim_unused_sm(NoInputSignalPio, true);
-  critical_section_exit(&UnusedPIOLock);
+  Buff.clear();
+  Buff.setMode(TimingsTTL);
 
+  VGASM = pio_claim_unused_sm(VGAPio, true);
+
+  NoInputSignalSM = pio_claim_unused_sm(NoInputSignalPio, true);
   NoInputSignalOffset =
       pio_add_program(NoInputSignalPio, &NoInputSignal_program);
   noInputSignalPioConfig(NoInputSignalPio, NoInputSignalSM,
                          NoInputSignalOffset, TTL_HSYNC_GPIO);
   pio_sm_set_enabled(NoInputSignalPio, NoInputSignalSM, true);
+
+  // Start the VSyncPolarity PIO.
+  VSyncPolaritySM = pio_claim_unused_sm(VSyncPolarityPio, true);
+  VSyncPolarityOffset =
+      pio_add_program(VSyncPolarityPio, &VSyncPolarity_program);
+  VSyncPolarityPioConfig(VSyncPolarityPio, VSyncPolaritySM, VSyncPolarityOffset,
+                         TTL_VSYNC_GPIO);
+  pio_sm_set_enabled(VSyncPolarityPio, VSyncPolaritySM, true);
+  DBG_PRINT(std::cout << "Started VSyncPolarty Pio\n";)
+
+  // Start the HSyncPolarity PIO.
+  HSyncPolaritySM = pio_claim_unused_sm(HSyncPolarityPio, true);
+  HSyncPolarityOffset =
+      pio_add_program(HSyncPolarityPio, &HSyncPolarity_program);
+  HSyncPolarityPioConfig(HSyncPolarityPio, HSyncPolaritySM, HSyncPolarityOffset,
+                         TTL_HSYNC_GPIO);
+  pio_sm_set_enabled(HSyncPolarityPio, HSyncPolaritySM, true);
+  DBG_PRINT(std::cout << "Started HSyncPolarty Pio\n";)
+
+  // Reset to defaults if the user is pressinx PxClkBtn during boot.
+  ResetToDefaults = !gpio_get(PX_CLK_BTN_GPIO) && !gpio_get(AUTO_ADJUST_GPIO);
+
+  // Start TTLReader. We don't know yet the state of NoSignal, but it's fine.
+  restartCore1TTLReader(NoSignal);
+
   // Start VGA Pio
   tryChangePIOMode();
+
 #ifndef DISALBE_PICO_LED
   Pico.ledON();
 #endif
 }
 
+static void core1_main() {
+  TTLReader TTLR(*PPL, *Pi, *Flash, Buff, VSyncPolarityPio_, VSyncPolaritySM_,
+                 HSyncPolarityPio_, HSyncPolaritySM_, ResetToDefaults);
+  ResetToDefaults = false;      // Only once
+  TTLReaderPtr = &TTLR;
+  DBG_PRINT(std::cout << "TTLR started\n";)
+  TTLR.runForEver();
+}
+
+void VGAWriter::restartCore1TTLReader(bool NoSignal) {
+  // Restart core1 because it must have hanged waiting for TTL
+  DBG_PRINT(std::cout << "Starting or restarting Core1\n";)
+  if (TTLReaderPtr != nullptr) {
+    DBG_PRINT(std::cout << "RESET CORE 1\n";)
+    TTLReaderPtr->unclaimUsedSMs();
+    multicore_reset_core1();
+    // multicore_fifo_pop_blocking();
+    sleep_ms(10);
+  }
+  TTLReaderPtr = nullptr;
+  VSyncPolarityPio_ = VSyncPolarityPio;
+  VSyncPolaritySM_ = VSyncPolaritySM;
+  HSyncPolarityPio_ = HSyncPolarityPio;
+  HSyncPolaritySM_ = HSyncPolaritySM;
+  multicore_launch_core1(core1_main);
+
+  DBG_PRINT(std::cout << "VGAWriter Wait for TTLReader\n";)
+  while (TTLReaderPtr == nullptr)
+    Utils::sleep_ms(50);
+  TimingsTTL = TTLReaderPtr->getMode();
+  TTLReaderPtr->setNoSignal(NoSignal);
+  DBG_PRINT(std::cout << "VGAWriter Wait Done\n";)
+}
+
 void VGAWriter::checkInputSignal() {
-  auto Pio = NoInputSignalPio;
-  auto SM = NoInputSignalSM;
-  check_pio_param(Pio);
-  check_sm_param(SM);
-  if (pio_sm_is_rx_fifo_empty(Pio, SM)) {
+  // If the HSync polarity PIO's buffer is empty then there is no TTL signal
+  if (pio_sm_is_rx_fifo_empty(NoInputSignalPio, NoInputSignalSM)) {
+    // No signal!
     if (!NoSignal) {
-      DBG_PRINT(if (!NoSignal) { std::cout << "No Signal\n"; })
-      Buff.noSignal();
+      DBG_PRINT(std::cout << "No Signal\n";)
+      NoSignal = true;
+      restartCore1TTLReader(NoSignal);
     }
-    NoSignal = true;
     return;
   }
-  DBG_PRINT(if (NoSignal) { std::cout << "End of No Signal\n"; })
-  NoSignal = false;
+  // Yes signal!
+  if (NoSignal) {
+    DBG_PRINT(std::cout << "\n\nEnd of No Signal\n";)
+    NoSignal = false;
+    restartCore1TTLReader(NoSignal);
+  }
+  // Pop from the nosignal queue.
+  pio_sm_get(NoInputSignalPio, NoInputSignalSM);
+}
 
-  pio_sm_get(Pio, SM);
+template <VGAResolution R, bool LineDoubling>
+void VGAWriter::drawFrame4x1() {
+  for (uint32_t Line = 0; Line != TimingsVGA[R].V_FrontPorch; ++Line)
+    DrawBlackLineWithMask4x1(/*InVSync=*/false);
+
+  // 1. TTL Visible
+  uint32_t Line = 0;
+  uint32_t LineTTLE =
+      std::min(std::min((LineDoubling ? 2 : 1) * TimingsTTL.V_Visible,
+                        TimingsVGA[R].V_Visible),
+               (LineDoubling ? 2 : 1) * DisplayBuffer::BuffY);
+  for (; Line < LineTTLE; ++Line)
+    DrawLineVSyncHigh4x1(Line / (LineDoubling ? 2 : 1));
+  // 2. The rest is black, including the back porch
+  static constexpr const uint32_t LineVGAE =
+      TimingsVGA[R].V_Visible + TimingsVGA[R].V_BackPorch;
+  for (; Line < LineVGAE; ++Line)
+    DrawBlackLineWithMask4x1(/*InVSync=*/false);
+
+  for (uint32_t Line = 0; Line != TimingsVGA[R].V_Retrace; ++Line)
+    DrawBlackLineWithMask4x1(/*InVSync=*/true);
+}
+
+template <VGAResolution R, bool LineDoubling>
+void VGAWriter::drawFrame8x1() {
+  // 0. Non-visible Front porch
+  for (uint32_t InvisLine = 0; InvisLine != TimingsVGA[R].V_FrontPorch;
+       ++InvisLine)
+    DrawBlackLineWithMaskMDA8x1(VMaskMDA_8);
+
+  // Visible
+  // -------
+  // 1. Vertical VGA-TTL visible gap, fill with black lines.
+  uint32_t VGA_TTL_VerticalGap = TimingsVGA[R].V_Visible - TimingsTTL.V_Visible;
+  uint32_t CenteringLinesTop = VGA_TTL_VerticalGap / 2;
+  uint32_t TTLLine = 0;
+  for (; TTLLine < CenteringLinesTop; ++TTLLine)
+    DrawBlackLineWithMaskMDA8x1(VMaskMDA_8);
+
+  // 2. Non-black TTL Visible.
+  uint32_t LineTTLE =
+      std::min(std::min((LineDoubling ? 2 : 1) * TimingsTTL.V_Visible,
+                        TimingsVGA[R].V_Visible),
+               (LineDoubling ? 2 : 1) * DisplayBuffer::BuffY);
+  for (uint32_t BuffLine = 0; BuffLine < LineTTLE; ++BuffLine) {
+    DrawLineVSyncHighMDA8x1(BuffLine / (LineDoubling ? 2 : 1));
+    ++TTLLine;
+  }
+  // 3. Bottom part of visible to fill the gap with black and keep the image
+  // centered.
+  static constexpr const uint32_t LineVGAE = TimingsVGA[R].V_Visible;
+  for (; TTLLine < LineVGAE; ++TTLLine)
+    DrawBlackLineWithMaskMDA8x1(VMaskMDA_8);
+
+  // 4. Non-visible back porch
+  for (uint32_t Line = 0; Line != TimingsVGA[R].V_BackPorch; ++Line)
+    DrawBlackLineWithMaskMDA8x1(VMaskMDA_8);
+  // 5. Retrace
+  for (uint32_t Line = 0; Line != TimingsVGA[R].V_Retrace; ++Line)
+    DrawBlackLineWithMaskMDA8x1(BlackMDA_8);
 }
 
 void VGAWriter::runForEver() {
   uint32_t Cnt = 0;
   while (true) {
-    auto TTLMode = Buff.getMode();
-    switch (TTLMode) {
-    case CGA_640x200_60Hz:
-    case EGA_640x200_60Hz:
-    case EGA_640x350_60Hz: {
-      static constexpr const auto M = VGA_640x400_70Hz;
-      for (uint32_t Line = 0; Line != Timing[M][V_FrontPorch]; ++Line)
-        DrawBlackLineWithMask4x1(/*InVSync=*/false);
-      if (TTLMode == EGA_640x350_60Hz) {
-        // 1. TTL Visible
-        uint32_t Line = 0;
-        uint32_t LineTTLE = Timing[TTLMode][V_Visible];
-        for (; Line != LineTTLE; ++Line)
-          DrawLineVSyncHigh4x1(std::min(Line, DisplayBuffer::BuffY - 1));
-        // 2. The rest is black
-        uint32_t LineVGAE = Timing[M][V_Visible];
-        for (;Line != LineVGAE; ++Line)
-          DrawBlackLineWithMask4x1(/*InVSync=*/false);
-      } else {
-        for (uint32_t Line = 0; Line != Timing[M][V_Visible]; ++Line)
-          DrawLineVSyncHigh4x1(Line/2);
+    switch (TimingsTTL.Mode) {
+    case TTL::CGA:
+    case TTL::EGA:
+      if (TTLReader::isHighRes(TimingsTTL))
+        drawFrame4x1<VGA_640x400_70Hz, /*LineDoubing=*/false>();
+      else {
+        if (TimingsTTL.V_Visible - YB > 200)
+          drawFrame4x1<VGA_640x480_60Hz, /*LineDoubing=*/true>();
+        else
+          drawFrame4x1<VGA_640x400_70Hz, /*LineDoubing=*/true>();
       }
-      for (uint32_t Line = 0; Line != Timing[M][V_BackPorch]; ++Line)
-        DrawBlackLineWithMask4x1(/*InVSync=*/false);
-      for (uint32_t Line = 0; Line != Timing[M][V_Sync]; ++Line)
-        DrawBlackLineWithMask4x1(/*InVSync=*/true);
       break;
-    }
-    case MDA_720x350_50Hz: {
-      static constexpr const auto M = VGA_800x600_56Hz;
-      for (uint32_t Line = 0; Line != Timing[M][V_FrontPorch]; ++Line)
-        DrawBlackLineWithMaskMDA8x1(VMaskMDA_8);
-      for (uint32_t Line = 0; Line != Timing[M][V_Visible]; ++Line)
-        DrawLineVSyncHighMDA8x1(Line);
-      for (uint32_t Line = 0; Line != Timing[M][V_BackPorch]; ++Line)
-        DrawBlackLineWithMaskMDA8x1(VMaskMDA_8);
-      for (uint32_t Line = 0; Line != Timing[M][V_Sync]; ++Line)
-        DrawBlackLineWithMaskMDA8x1(BlackMDA_8);
+    case TTL::MDA:
+      // If this is real MDA with high horizontal resolution > 640 or vertical >
+      // 240 use no line-doubling and 800x600.
+      if (TimingsTTL.H_Visible - XB > 640 || TimingsTTL.V_Visible - YB > 240) {
+        drawFrame8x1<VGA_800x600_56Hz, /*LineDoubling=*/false>();
+      } else {
+        // Use line-doubling
+        if (TimingsTTL.V_Visible - YB > 200)
+          // If this can vit in 640 horizontal but is > 200 vertically use
+          // 640x480 with lien doubling.
+          drawFrame8x1<VGA_640x480_60Hz, /*LineDoubing=*/true>();
+        else
+          // Use 640x400
+          drawFrame8x1<VGA_640x400_70Hz, /*LineDoubing=*/true>();
+      }
       break;
-    }
     default:
       DBG_PRINT(std::cout << "Unimplemented mode "
-                          << modeToStr(TTLMode);)
+                          << modeToStr(TimingsTTL.Mode);)
       break;
     }
+    ++Cnt;
     // Update PIO if needed.
-    tryChangePIOMode();
-
-    if (++Cnt % NoSignalCheckFreq == 0)
+    if (Cnt % 2 == 0) {
+      tryChangePIOMode();
+    }
+    if (Cnt % 2 == 1)
       checkInputSignal();
   }
 }

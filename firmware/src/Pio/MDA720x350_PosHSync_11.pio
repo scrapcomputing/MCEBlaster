@@ -1,0 +1,28 @@
+;; Copyright (C) 2024 Scrap Computing
+
+.program MDA720x350_PosHSync_11
+
+.define TTL_PIN_CNT 4
+.define HSYNC_GPIO 7
+
+; Pixel clock: 16.257MHz: 61.512ns/pixel 3.704ns/instr @ 270MHz , so we need 16.66 instrs / pixel
+
+entry:
+
+.wrap_target
+loop:
+   set x, 6
+   bundle:
+     in pins, TTL_PIN_CNT [9]  ; ISR = XXIV(#0)
+     jmp x--, bundle
+   in pins, TTL_PIN_CNT [6]  ; ISR = XXIV(#7)XXIV(#6)...XXIV(#0)
+   push noblock                      ; FIFO = ISR (#7,#6,#5,#4,#3,#2,#1,#0)
+   jmp pin wait_hsync
+   jmp loop
+
+wait_hsync:
+   in null, 32
+   push noblock
+   jmp pin wait_hsync
+   wait 0 gpio HSYNC_GPIO [5] ; Wait [5] for beter sampling?
+   .wrap                      ; jmp loop

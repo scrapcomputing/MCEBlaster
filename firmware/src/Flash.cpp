@@ -9,8 +9,10 @@
 #include <pico/multicore.h>
 
 std::vector<int> FlashStorage::getDataVec(const std::vector<int> &Values) {
+  DBG_PRINT(std::cout << __FUNCTION__ << " Values.size()=" << Values.size()
+                      << "\n";)
   std::vector<int> TmpDataVec;
-  int NumEntries = BytesToFlash / sizeof(TmpDataVec[0]);
+  int NumEntries = BytesToWrite / sizeof(TmpDataVec[0]);
   TmpDataVec.reserve(NumEntries);
   TmpDataVec.reserve(MagicNumber.size() + 2 + Values.size());
   // 1. Magic number.
@@ -28,18 +30,17 @@ std::vector<int> FlashStorage::getDataVec(const std::vector<int> &Values) {
 
 FlashStorage::FlashStorage() {
   FlashArray =
-      (const int *)(XIP_BASE + BaseOffset + /*Revision:*/ 2 * sizeof(int) +
+      (const int *)(XIP_BASE + WriteBaseOffset + /*Revision:*/ 2 * sizeof(int) +
                     /*MagicNumber:*/ MagicNumber.size() *
                         sizeof(MagicNumber[0]));
 }
 
 void FlashStorage::write(const std::vector<int> &Values) {
-  DBG_PRINT(std::cout << "BaseOffset=" << BaseOffset
-                      << " BytesToFlash=" << BytesToFlash << "\n";)
+  DBG_PRINT(std::cout << "WriteBaseOffset=" << WriteBaseOffset
+                      << " BytesToWrite=" << BytesToWrite << "\n";)
   DBG_PRINT(std::cout << "DataVec:\n";)
   auto DataVec = getDataVec(Values);
-  for (int Val : DataVec)
-    DBG_PRINT(std::cout << Val << "\n";)
+  DBG_PRINT(for (int Val : DataVec) std::cout << Val << "\n";)
 
   DBG_PRINT(std::cout << "Before save and disable interrupts()\n";)
   // When writing to flash we need to stop the other core from running code.
@@ -47,9 +48,9 @@ void FlashStorage::write(const std::vector<int> &Values) {
   multicore_lockout_start_blocking();
   // We also need to disable interrupts.
   uint32_t SvInterrupts = save_and_disable_interrupts();
-  flash_range_erase(BaseOffset, BytesToFlash);
-  flash_range_program(BaseOffset, (const uint8_t *)DataVec.data(),
-                      BytesToFlash);
+  flash_range_erase(EraseBaseOffset, BytesToErase);
+  flash_range_program(WriteBaseOffset, (const uint8_t *)DataVec.data(),
+                      BytesToWrite);
   // Restore interrupts.
   restore_interrupts(SvInterrupts);
   // Resume execution on other core.
@@ -64,15 +65,16 @@ std::vector<int> FlashStorage::readMagicNumber() const {
     MagicNum.push_back(FlashArray[Idx - MagicNumberSz - 2]);
 
   DBG_PRINT(std::cout << "Read magic number: ";)
-  for (int V : MagicNum)
-    DBG_PRINT(std::cout << V << " ";)
+  DBG_PRINT(for (int V : MagicNum) std::cout << V << " ";)
   DBG_PRINT(std::cout << "\n";)
   return MagicNum;
 }
 
 std::pair<int, int> FlashStorage::readRevision() const {
-  int MagicNumberSz = (int)MagicNumber.size();
   return {FlashArray[-2], FlashArray[-1]};
 }
 
-bool FlashStorage::valid() const { return readMagicNumber() == MagicNumber; }
+bool FlashStorage::valid() const {
+  auto [Major, Minor] = readRevision();
+  return readMagicNumber() == MagicNumber && Major == REVISION_MAJOR;
+}

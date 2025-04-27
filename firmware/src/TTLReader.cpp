@@ -9,8 +9,7 @@
 #include "Utils.h"
 #include "pico/stdlib.h"
 #include <cmath>
-
-extern class DisplayBuffer Buff;
+#include <sstream>
 
 static constexpr const uint32_t EGABorderCounter = 700;
 static constexpr const uint32_t CGABorderCounter = 700;
@@ -19,17 +18,29 @@ static constexpr const uint32_t MDABorderCounter = 800;
 static inline void EGA640x350PioConfig(PIO Pio, uint SM, uint Offset,
                                        uint RGB_GPIO, uint32_t HSYNC_GPIO,
                                        uint16_t ClkDivInt, uint8_t ClkDivFrac,
-                                       uint32_t InstrDelay) {
-  auto GetInstrDelay = [Offset](uint32_t InstrDelay) {
-    switch (InstrDelay) {
-      // case 7:
-      // return EGA640x350_07_program_get_default_config(Offset);
-#include "EGASwitchCase_config_cpp"
+                                       uint32_t InstrDelay,
+                                       Polarity HSyncPolarity) {
+  auto GetInstrDelay = [Offset](uint32_t InstrDelay, Polarity HSyncPolarity) {
+    switch (HSyncPolarity) {
+    case Polarity::Pos: {
+      switch (InstrDelay) {
+        // case 7:
+        // return EGA640x350_07_program_get_default_config(Offset);
+#include "EGASwitchCase_PosHSync_config_cpp"
+        break;
+      }
+    }
+    case Polarity::Neg: {
+      switch (InstrDelay) {
+#include "EGASwitchCase_NegHSync_config_cpp"
+        break;
+      }
+    }
     }
     std::cerr << "Bad InstrDelay EGA: GetInstrDelay(" << InstrDelay << ")\n";
     exit(1);
   };
-  pio_sm_config Conf = GetInstrDelay(InstrDelay);
+  pio_sm_config Conf = GetInstrDelay(InstrDelay, HSyncPolarity);
 
   // in pins: RGB
   sm_config_set_in_pins(&Conf, RGB_GPIO);
@@ -52,17 +63,28 @@ static inline void EGA640x350PioConfig(PIO Pio, uint SM, uint Offset,
 static inline void CGA640x200PioConfig(PIO Pio, uint SM, uint Offset,
                                        uint RGB_GPIO, uint32_t HSYNC_GPIO,
                                        uint16_t ClkDivInt, uint8_t ClkDivFrac,
-                                       uint32_t InstrDelay) {
-  auto GetInstrDelay = [Offset](uint32_t InstrDelay) {
-    switch (InstrDelay) {
-      // case 9:
-      // return CGA640x200_09_program_get_default_config(Offset);
-#include "CGASwitchCase_config_cpp"
+                                       uint32_t InstrDelay, Polarity HSyncPolarity) {
+  auto GetInstrDelay = [Offset](uint32_t InstrDelay, Polarity HSyncPolarity) {
+    switch (HSyncPolarity) {
+    case Polarity::Pos: {
+      switch (InstrDelay) {
+        // case 9:
+        // return CGA640x200_09_program_get_default_config(Offset);
+#include "CGASwitchCase_PosHSync_config_cpp"
+        break;
+      }
+    }
+    case Polarity::Neg: {
+      switch (InstrDelay) {
+#include "CGASwitchCase_NegHSync_config_cpp"
+        break;
+      }
+    }
     }
     std::cerr << "Bad InstrDelay CGA: GetInstrDelay(" << InstrDelay << ")\n";
     exit(1);
   };
-  pio_sm_config Conf = GetInstrDelay(InstrDelay);
+  pio_sm_config Conf = GetInstrDelay(InstrDelay, HSyncPolarity);
   // in pins: RGB
   sm_config_set_in_pins(&Conf, RGB_GPIO);
   // Shift to the right, no auto-push
@@ -92,15 +114,27 @@ static inline void CGA640x200PioConfig(PIO Pio, uint SM, uint Offset,
 static inline void MDA720x350PioConfig(PIO Pio, uint SM, uint Offset,
                                        uint MDA_GPIO, uint HSYNC_GPIO,
                                        uint16_t ClkDivInt, uint8_t ClkDivFrac,
-                                       uint32_t InstrDelay) {
-  auto GetInstrDelay = [Offset](uint32_t InstrDelay) {
-    switch (InstrDelay) {
-#include "MDASwitchCase_config_cpp"
+                                       uint32_t InstrDelay,
+                                       Polarity HSyncPolarity) {
+  auto GetInstrDelay = [Offset](uint32_t InstrDelay, Polarity HSyncPolarity) {
+    switch (HSyncPolarity) {
+    case Polarity::Pos: {
+      switch (InstrDelay) {
+#include "MDASwitchCase_PosHSync_config_cpp"
+        break;
+      }
+    }
+    case Polarity::Neg: {
+      switch (InstrDelay) {
+#include "MDASwitchCase_NegHSync_config_cpp"
+        break;
+      }
+    }
     }
     std::cerr << "GetInstrDelay MDA Bad InstrDelay " << InstrDelay << "\n";
     exit(1);
   };
-  pio_sm_config Conf = GetInstrDelay(InstrDelay);
+  pio_sm_config Conf = GetInstrDelay(InstrDelay, HSyncPolarity);
   // in pins: VI (Video, Intensity)
   sm_config_set_in_pins(&Conf, MDA_GPIO);
   // Shift to the right, no auto-push
@@ -127,32 +161,39 @@ void AutoAdjustBorder::resetBorders() {
   TmpYBorder = YBorderInit;
 }
 
-void AutoAdjustBorder::applyBorders(Resolution Mode) {
+void AutoAdjustBorder::applyBorders(const TTLDescr &TimingsTTL) {
   // Clear screen if borders have changed to avoid artifacts.
   if (XBorder != TmpXBorder || YBorder != TmpYBorder)
-    Buff.clear();
+    TTLR.getBuff().clear();
 
   // Update TTLReader's values.
   XBorder = TmpXBorder;
   YBorder = TmpYBorder;
 
-  switch (Mode) {
-  case CGA_640x200_60Hz:
-  case EGA_640x200_60Hz:
-    CGABorderOpt = BorderXY(XBorder, YBorder);
+  switch (TimingsTTL.Mode) {
+  case TTL::CGA:
+  case TTL::EGA:
+    if (TTLReader::isHighRes(TimingsTTL))
+      EGABorderOpt = BorderXY(XBorder, YBorder);
+    else
+      CGABorderOpt = BorderXY(XBorder, YBorder);
     break;
-  case EGA_640x350_60Hz:
-    EGABorderOpt = BorderXY(XBorder, YBorder);
-    break;
-  case MDA_720x350_50Hz:
+  case TTL::MDA:
     MDABorderOpt = BorderXY(XBorder, YBorder);
     break;
   }
 }
 
 void AutoAdjustBorder::setBorder(const BorderXY &XY) {
-  XBorder = XY.X;
-  YBorder = XY.Y;
+  if (ManualTTLEnabled && !XBorderAUTO)
+    XBorder = ManualTTL.H_FrontPorch;
+  else
+    XBorder = XY.X;
+
+  if (ManualTTLEnabled && !YBorderAUTO)
+    YBorder = ManualTTL.V_FrontPorch;
+  else
+    YBorder = XY.Y;
 }
 
 void AutoAdjustBorder::forceStart(bool AlwaysON) {
@@ -163,32 +204,26 @@ void AutoAdjustBorder::forceStart(bool AlwaysON) {
   StopFrame = FrameCnt + AUTO_ADJUST_DURATION;
 }
 
-void AutoAdjustBorder::tryPushButtonStart() {
-  if (Btn.get() == ButtonState::Release) {
-    DBG_PRINT(std::cout << "Auto Adjusting...\n";)
-    Buff.displayTxt("AUTO ADJUST", 0, 0, DISPLAY_TXT_ZOOM, /*Center=*/true);
-    sleep_ms(AUTO_ADJUST_DISPLAY_MS);
-    Buff.clear();
-    forceStart(/*AlwaysON=*/false);
-  } else if (Btn.get() == ButtonState::LongPress) {
-    if (Enabled == State::Off) {
-      DBG_PRINT(std::cout << "Auto Adjust ALWAYS ON\n";)
-      Buff.displayTxt("AUTO ADJUST\nALWAYS ON", 0, 0, DISPLAY_TXT_ZOOM,
-                      /*Center=*/true);
-      sleep_ms(AUTO_ADJUST_ALWAYS_ON_DISPLAY_MS);
-      Buff.clear();
-      forceStart(/*AlwaysON=*/true);
-    } else if (Enabled == State::AlwaysON) {
-      DBG_PRINT(std::cout << "Auto Adjust ALWAYS ON\n";)
-      Buff.displayTxt("AUTO ADJUST\nMANUAL", 0, 0, DISPLAY_TXT_ZOOM,
-                      /*Center=*/true);
-      sleep_ms(AUTO_ADJUST_ALWAYS_ON_DISPLAY_MS);
-      Enabled = State::Off;
-    }
+void AutoAdjustBorder::runAutoAdjust() {
+  DBG_PRINT(std::cout << "Auto Adjusting...\n";)
+  TTLR.displayTxt("AUTO ADJUST", AUTO_ADJUST_DISPLAY_MS);
+  forceStart(/*AlwaysON=*/false);
+}
+
+void AutoAdjustBorder::runAlwaysAutoAdjust() {
+  if (Enabled == State::Off) {
+    DBG_PRINT(std::cout << "Auto Adjust ALWAYS ON\n";)
+    TTLR.displayTxt("AUTO ADJUST ALWAYS ON", AUTO_ADJUST_ALWAYS_ON_DISPLAY_MS);
+    forceStart(/*AlwaysON=*/true);
+  } else if (Enabled == State::AlwaysON) {
+    DBG_PRINT(std::cout << "Auto Adjust ALWAYS ON\n";)
+    TTLR.displayTxt("AUTO ADJUST ALWAYS ON DISABLED",
+                    AUTO_ADJUST_ALWAYS_ON_DISPLAY_MS);
+    Enabled = State::Off;
   }
 }
 
-bool AutoAdjustBorder::frameTick(Resolution Mode) {
+bool AutoAdjustBorder::frameTick(const TTLDescr &TimingsTTL) {
   if (Enabled == State::Off)
     return false;
   if (++ThrottleCnt % AUTO_ADJUST_THROTTLE_CNT == 0)
@@ -197,7 +232,7 @@ bool AutoAdjustBorder::frameTick(Resolution Mode) {
   if (FrameCnt == StartFrame) {
     resetBorders();
   } else if (FrameCnt == StopFrame) {
-    applyBorders(Mode);
+    applyBorders(TimingsTTL);
     DBG_PRINT(std::cout << "Auto Adust: XBorder=" << XBorder
                         << " YBorder=" << YBorder << "\n";)
     switch (Enabled) {
@@ -207,6 +242,8 @@ bool AutoAdjustBorder::frameTick(Resolution Mode) {
     case State::AlwaysON:
       forceStart(/*AlwaysON=*/true);
       break;
+    case State::Off:
+      break;
     }
     return true;
   }
@@ -214,24 +251,11 @@ bool AutoAdjustBorder::frameTick(Resolution Mode) {
 }
 
 void AutoAdjustBorder::collect(PIO Pio, uint32_t SM, uint32_t ModeBorderCounter,
-                               uint32_t Line, Resolution M) {
+                               uint32_t Line, TTL Mode) {
   // Get the border value from the dedicated PIO.
   uint32_t Raw = pio_sm_get_blocking(Pio, SM);
   if (Raw == 0xffffffff)
     Raw = 0;
-
-  auto GetPixelsPerEntry = [](Resolution M) {
-    switch (M) {
-    case EGA_640x350_60Hz:
-    case CGA_640x200_60Hz:
-      return 4;
-    case MDA_720x350_50Hz:
-      return 8;
-    default:
-      std::cerr << "GetPixelsPerEntry() BAD Mode " << modeToStr(M) << "\n";
-      exit(1);
-    }
-  };
 
   if (Enabled != State::Off) {
     uint32_t Border = ModeBorderCounter - Raw;
@@ -246,24 +270,34 @@ void AutoAdjustBorder::collect(PIO Pio, uint32_t SM, uint32_t ModeBorderCounter,
   }
 }
 
-uint32_t &TTLReader::getPxClkFor(Resolution M) {
-  switch (M) {
-  case EGA_640x350_60Hz:
-    return EGAPxClk;
-  case EGA_640x200_60Hz:
-  case CGA_640x200_60Hz:
-    return CGAPxClk;
-  case MDA_720x350_50Hz:
+uint32_t &TTLReader::getPxClkFor(const TTLDescr &Descr) {
+  switch (Descr.Mode) {
+  case TTL::CGA:
+  case TTL::EGA:
+    return isHighRes(Descr) ? EGAPxClk : CGAPxClk;
+  case TTL::MDA:
     return MDAPxClk;
   default:
-    std::cerr << __FUNCTION__ << " BAD Mode " << (int)M << "\n";
+    std::cerr << __FUNCTION__ << " BAD Mode " << modeToStr(Descr.Mode) << "\n";
     exit(1);
   }
 }
 
+void TTLReader::displayPxClk() {
+  uint32_t &PixelClock = getPxClkFor(TimingsTTL);
+  static constexpr const int BuffSz = 36;
+  char Txt[BuffSz];
+  snprintf(Txt, BuffSz, "PxCLK:%2.3fMHz  (%s %lux%lu)",
+           (float)PixelClock / 1000000, modeToStr(TimingsTTL.Mode),
+           TimingsTTL.H_Visible -
+               /*XB is an implementation detail, hide it from user*/ XB,
+           TimingsTTL.V_Visible - YB);
+  displayTxt(Txt, PX_CLK_TXT_DISPLAY_MS);
+}
+
 void TTLReader::changePxClk(bool Increase, bool SmallStep) {
   /// \Returns the ClkDiv for the current mode.
-  uint32_t &PixelClock = getPxClkFor(Buff.getMode());
+  uint32_t &PixelClock = getPxClkFor(TimingsTTL);
   DBG_PRINT(std::cout << "\n-----------\n";)
   DBG_PRINT(std::cout << "Pixel Clock Before=" << PixelClock;)
   if (Increase) {
@@ -275,77 +309,166 @@ void TTLReader::changePxClk(bool Increase, bool SmallStep) {
   }
   DBG_PRINT(std::cout << "After=" << PixelClock << "\n";)
   DBG_PRINT(std::cout << "-----------\n\n";)
-  static constexpr const int BuffSz = 18;
-  char Txt[BuffSz];
-  snprintf(Txt, BuffSz, "PxCLK:%2.3fMHz", (float)PixelClock / 1000000);
-  Buff.displayTxt(Txt, 0, 0, DISPLAY_TXT_ZOOM, /*Center=*/true);
-  sleep_ms(PX_CLK_TXT_DISPLAY_MS);
+  displayPxClk();
 }
 
-void TTLReader::setTimingNOPs() {
-  uint32_t TimingNOPs = Buff.getPixelClock_PIO();
-  DBG_PRINT(std::cout << "Set timing NOPs to " << TimingNOPs << "\n";)
-  pio_sm_put_blocking(TTLPio, TTLSM, TimingNOPs);
-  DBG_PRINT(std::cout << "Done\n";)
+void TTLReader::unclaimUsedSMs() {
+  for (auto [Pio, SM] : UsedSMs) {
+    pio_sm_set_enabled(Pio, SM, false);
+    // Unclaim it.
+    pio_sm_unclaim(Pio, SM);
+  }
 }
 
-TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash)
-    : PioLoader(PioLoader), AutoAdjustBtn(AUTO_ADJUST_GPIO, Pi, "AutoAdjust"),
-      PxClkBtn(PX_CLK_BTN_GPIO, Pi, "PxClk"),
-      AutoAdjust(XBorder, YBorder, CGABorderOpt, EGABorderOpt, MDABorderOpt,
-                 AutoAdjustBtn, Flash),
-      Flash(Flash) {
-  // Load PIO clock dividers from Flash
-  if (Flash.valid()) {
-    DBG_PRINT(std::cout << "\nReading from flash...\n";)
-    CGAPxClk = (uint32_t)Flash.read(CGAPxClkIdx);
-    EGAPxClk = (uint32_t)Flash.read(EGAPxClkIdx);
-    MDAPxClk = (uint32_t)Flash.read(MDAPxClkIdx);
+int TTLReader::claimUnusedSMSafe(PIO Pio) {
+  int SM = pio_claim_unused_sm(TTLPio, true);
+  UsedSMs.push_back({Pio, SM});
+  return SM;
+}
 
-    auto ReadBorderSafe = [this, &Flash](int Idx) -> std::optional<BorderXY> {
-      uint32_t XY = (uint32_t)Flash.read(Idx);
-      // If 0xFFFFFFFF then it's not valid
-      if (XY == InvalidBorder)
-        return std::nullopt;
-      return BorderXY(XY);
-    };
+void TTLReader::updateSyncPolarityVariables() {
+  auto GetPolarity = [this](PIO Pio, uint SM) {
+    uint32_t Samples = pio_sm_get_blocking(Pio, SM);
+    // DBG_PRINT(printf("GetPolarity: 0x%08x\n", Samples);)
+    // Count the number of '1's. If more than 16 then it's negative ~~~~|_|~~~~
+    uint32_t CntOnes = 0;
+    for (int Idx = 0; Idx != 32; ++Idx) {
+      if ((Samples >> Idx) & 0x1)
+        ++CntOnes;
+      if (CntOnes > 16)
+        return Polarity::Neg;
+    }
+    return Polarity::Pos;
+  };
 
-    CGABorderOpt = ReadBorderSafe(CGABorderIdx);
-    EGABorderOpt = ReadBorderSafe(EGABorderIdx);
-    MDABorderOpt = ReadBorderSafe(MDABorderIdx);
-
-    DBG_PRINT(std::cout << "CGAPxClk=" << CGAPxClk << "\n";)
-    DBG_PRINT(std::cout << "EGAPxClk=" << EGAPxClk << "\n";)
-    DBG_PRINT(std::cout << "MDAPxClk=" << MDAPxClk << "\n";)
+  if (!pio_sm_is_rx_fifo_empty(VSyncPolarityPio, VSyncPolaritySM)) {
+    // VSync
+    Polarity NewVSyncPolarity = GetPolarity(VSyncPolarityPio, VSyncPolaritySM);
+    DBG_PRINT(if (NewVSyncPolarity != VSyncPolarity) {
+      std::cout << "NewVSyncPolarity=" << polarityToStr(NewVSyncPolarity)
+                << "\n";
+    })
+    VSyncPolarity = NewVSyncPolarity;
   } else {
-    DBG_PRINT(std::cout << "Flash not valid!\n";);
+    DBG_PRINT(std::cerr << "VSync Polarity Pio FIFO empty!\n";)
   }
 
-  TTLPio = pio0;
-  TTLSM = pio_claim_unused_sm(TTLPio, true);
-
-  TTLBorderPio = pio0;
-  TTLBorderSM = pio_claim_unused_sm(TTLBorderPio, true);
-
-  // Start the VSyncPolarity PIO.
-  VSyncPolarityPio = pio0;
-  VSyncPolaritySM = pio_claim_unused_sm(VSyncPolarityPio, true);
-  VSyncPolarityOffset = PioLoader.loadPIOProgram(
-      VSyncPolarityPio, VSyncPolaritySM, &VSyncPolarity_program,
-      [this](PIO Pio, uint SM, uint Offset) {
-        VSyncPolarityPioConfig(Pio, SM, Offset, TTL_VSYNC_GPIO);
-      });
-  pio_sm_put_blocking(VSyncPolarityPio, VSyncPolaritySM, VSyncPolarityCounter);
-
-  getDividerAutomatically();
-  switchPio();
+  if (!pio_sm_is_rx_fifo_empty(HSyncPolarityPio, HSyncPolaritySM)) {
+    // HSync
+    Polarity NewHSyncPolarity = GetPolarity(HSyncPolarityPio, HSyncPolaritySM);
+    DBG_PRINT(if (NewHSyncPolarity != HSyncPolarity) {
+      std::cout << "NewHSyncPolarity=" << polarityToStr(NewHSyncPolarity)
+                << "\n";
+    })
+    HSyncPolarity = NewHSyncPolarity;
+  } else {
+    DBG_PRINT(std::cerr << "HSync Polarity Pio FIFO empty!\n";)
+  }
 }
 
-template bool TTLReader::readLineCGA<CGA_640x200_60Hz>(uint32_t);
-template bool TTLReader::readLineCGA<EGA_640x350_60Hz>(uint32_t);
+TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
+                     DisplayBuffer &Buff, PIO VSyncPolarityPio,
+                     uint VSyncPolaritySM, PIO HSyncPolarityPio,
+                     uint HSyncPolaritySM, bool ResetToDefaults)
+    : Pi(Pi), PioLoader(PioLoader),
+      AutoAdjustBtn(AUTO_ADJUST_GPIO, Pi, "AutoAdjust"),
+      PxClkBtn(PX_CLK_BTN_GPIO, Pi, "PxClk"),
+      AutoAdjust(ManualTTLEnabled, ManualTTL, XBorderAUTO, XBorder, YBorderAUTO,
+                 YBorder, CGABorderOpt, EGABorderOpt, MDABorderOpt, Flash,
+                 *this),
+      Flash(Flash), VSyncPolarityPio(VSyncPolarityPio),
+      VSyncPolaritySM(VSyncPolaritySM), HSyncPolarityPio(HSyncPolarityPio),
+      HSyncPolaritySM(HSyncPolaritySM), ResetToDefaults(ResetToDefaults),
+      Buff(Buff), ManualTTLMenu(*this) {
+  DBG_PRINT(std::cout << "\n\n\n\n\nTTLReader constructor start\n";)
+  XBorder = 0;
+  YBorder = 0;
+  VHz = 0;
+  HHz = 0;
+  VSyncPolarity = Polarity::Pos;
+  HSyncPolarity = Polarity::Pos;
 
-template <uint32_t M>
-bool TTLReader::readLineCGA(uint32_t Line) {
+  Buff.setMode(TimingsTTL);
+  if (ResetToDefaults) {
+    DBG_PRINT(std::cout << "\n\n\n*** Reset to defaults ***\n\n\n";)
+    saveToFlash();
+    // Flash the LED to let the user know that reset was succesfull
+    for (uint32_t Cnt = 0; Cnt != 20; ++Cnt) {
+      if (Cnt % 2 == 0)
+        Pi.ledON();
+      else
+        Pi.ledOFF();
+      Utils::sleep_ms(100);
+    }
+    Pi.ledON();
+  } else {
+    if (Flash.valid()) {
+      DBG_PRINT(std::cout << "Reading from flash...\n";)
+      CGAPxClk = (uint32_t)Flash.read(CGAPxClkIdx);
+      EGAPxClk = (uint32_t)Flash.read(EGAPxClkIdx);
+      MDAPxClk = (uint32_t)Flash.read(MDAPxClkIdx);
+      ManualTTLEnabled = (bool)Flash.read(ManualTTL_EnabledIdx);
+      ManualTTL.Mode = getTTLAtIdx((uint32_t)Flash.read(ManualTTL_ModeIdx));
+      ManualTTL.H_Visible = (uint32_t)Flash.read(ManualTTL_H_VisibleIdx);
+      ManualTTL.V_Visible = (uint32_t)Flash.read(ManualTTL_V_VisibleIdx);
+      if (ManualTTLEnabled) {
+        XBorderAUTO = (uint32_t)Flash.read(XBorderAUTOIdx);
+        ManualTTL.H_FrontPorch =
+            (uint32_t)Flash.read(ManualTTL_H_FrontPorchIdx);
+        YBorderAUTO = (uint32_t)Flash.read(YBorderAUTOIdx);
+        ManualTTL.V_FrontPorch =
+            (uint32_t)Flash.read(ManualTTL_V_FrontPorchIdx);
+      }
+
+      auto ReadBorderSafe = [this, &Flash](int Idx) -> std::optional<BorderXY> {
+        uint32_t XY = (uint32_t)Flash.read(Idx);
+        // If 0xFFFFFFFF then it's not valid
+        if (XY == InvalidBorder)
+          return std::nullopt;
+        return BorderXY(XY);
+      };
+
+      CGABorderOpt = ReadBorderSafe(CGABorderIdx);
+      EGABorderOpt = ReadBorderSafe(EGABorderIdx);
+      MDABorderOpt = ReadBorderSafe(MDABorderIdx);
+
+      DBG_PRINT(std::cout << "CGAPxClk=" << CGAPxClk << "\n";)
+      DBG_PRINT(std::cout << "EGAPxClk=" << EGAPxClk << "\n";)
+      DBG_PRINT(std::cout << "MDAPxClk=" << MDAPxClk << "\n";)
+      DBG_PRINT(std::cout << "ManualTTL Enabled=" << ManualTTLEnabled << "\n";)
+      DBG_PRINT(std::cout << "ManualTTL Mode=" << modeToStr(ManualTTL.Mode)
+                          << "\n";)
+      DBG_PRINT(std::cout << "ManualTTL H Visible=" << ManualTTL.H_Visible
+                          << "\n";)
+      DBG_PRINT(std::cout << "ManualTTL V Visible=" << ManualTTL.V_Visible
+                          << "\n";)
+      DBG_PRINT(std::cout << "XBorderAUTO=" << XBorderAUTO << "\n";)
+      DBG_PRINT(std::cout << "ManualTTL H FrontPorch=" << ManualTTL.H_FrontPorch
+                          << "\n";)
+      DBG_PRINT(std::cout << "YBorderAUTO=" << YBorderAUTO << "\n";)
+      DBG_PRINT(std::cout << "ManualTTL V FrontPorch=" << ManualTTL.V_FrontPorch
+                          << "\n";)
+    } else {
+      DBG_PRINT(std::cout << "Flash not valid!\n";);
+    }
+  }
+  if (ManualTTLEnabled)
+    TimingsTTL = ManualTTL;
+
+  TTLPio = pio0;
+  TTLSM = claimUnusedSMSafe(TTLPio);
+
+  TTLBorderPio = pio0;
+  TTLBorderSM = claimUnusedSMSafe(TTLBorderPio);
+
+  DBG_PRINT(std::cout << "TTLReader constructor getDividerAutomatically()\n";)
+  getDividerAutomatically();
+  DBG_PRINT(std::cout << "TTLReader constructor switchPio()\n";)
+  switchPio();
+  DBG_PRINT(std::cout << "TTLReader constructor end\n";)
+}
+
+template <bool DiscardData> bool TTLReader::readLineCGA(uint32_t Line) {
   // Now fill in the line until HSync is high.
   uint32_t X = 0;
 
@@ -359,7 +482,7 @@ bool TTLReader::readLineCGA(uint32_t Line) {
     while (gpio_get(TTL_HSYNC_GPIO) == 0)
       ;
   } else {
-    uint32_t XMax = Timing[M][H_Visible] + XBorderAdj;
+    uint32_t XMax = TimingsTTL.H_Visible + XBorderAdj;
     while (true) {
       // Example:
       // ISR Values are right-shifted. 0 is the earliest, 3 is the latest
@@ -373,8 +496,10 @@ bool TTLReader::readLineCGA(uint32_t Line) {
 
       // Skip non-visible parts
       uint32_t VHRGB = pio_sm_get_blocking(TTLPio, TTLSM);
-      if (X >= XBorderAdj) {
-        Buff.setCGA32(Line - YBorder, X - XBorderAdj, VHRGB & RGBMask_4);
+      if constexpr (!DiscardData) {
+        if (X >= XBorderAdj) {
+          Buff.setCGA32(Line - YBorder, X - XBorderAdj, VHRGB & RGBMask_4);
+        }
       }
       X += 4;
       if (X > XMax) {
@@ -390,13 +515,11 @@ bool TTLReader::readLineCGA(uint32_t Line) {
   // while(!pio_sm_is_rx_fifo_empty(TTLPio, TTLSM))
   //   pio_sm_get(TTLPio, TTLSM);
   bool InRetrace =
-      gpio_get(TTL_VSYNC_GPIO) == (Timing[M][V_SyncPolarity] == Pos);
-  DBG_PRINT(MaxX = std::max(MaxX, X);)
+      gpio_get(TTL_VSYNC_GPIO) == (TimingsTTL.V_SyncPolarity == Pos);
   return InRetrace;
 }
 
-bool TTLReader::readLineMDA(uint32_t Line) {
-  static constexpr const auto M = MDA_720x350_50Hz;
+template <bool DiscardData> bool TTLReader::readLineMDA(uint32_t Line) {
   // Now fill in the line until HSync is high.
   uint32_t PixelX = 0;
   uint32_t BuffX = 0;
@@ -411,7 +534,7 @@ bool TTLReader::readLineMDA(uint32_t Line) {
     while (gpio_get(TTL_HSYNC_GPIO) == 0)
       ;
   } else {
-    uint32_t XMax = Timing[M][H_Visible];
+    uint32_t XMax = TimingsTTL.H_Visible;
     uint32_t XMaxPixelX = XMax + XBorderAdj;
     while (true) {
       // Example:
@@ -423,8 +546,10 @@ bool TTLReader::readLineMDA(uint32_t Line) {
       // So the natural way of inserting values to the ISR is with right-shift.
       // We need to come up with the order: 7 6 5 4 3 2 1 0
       uint32_t MDA8 = pio_sm_get_blocking(TTLPio, TTLSM);
-      if (BuffX >= BuffXBorder)
-        Buff.setMDA32(Line - YBorder, BuffX - BuffXBorder, MDA8);
+      if constexpr (!DiscardData) {
+        if (BuffX >= BuffXBorder)
+          Buff.setMDA32(Line - YBorder, BuffX - BuffXBorder, MDA8);
+      }
       // Since we are packing 2 monochrome values per byte we are increasing
       // BuffX by 4 instead of 8 to avoid dividing it by 2 again in setMDA32().
       BuffX += 4;
@@ -438,93 +563,111 @@ bool TTLReader::readLineMDA(uint32_t Line) {
   while (gpio_get(TTL_HSYNC_GPIO) == 0)
     ;
   bool InRetrace =
-      gpio_get(TTL_VSYNC_GPIO) == (Timing[M][V_SyncPolarity] == Pos);
-  DBG_PRINT(MaxX = std::max(MaxX, PixelX);)
+      gpio_get(TTL_VSYNC_GPIO) == (TimingsTTL.V_SyncPolarity == Pos);
   return InRetrace;
 }
 
-static auto getEGAProgram(uint32_t IPP) {
-  switch(IPP) {
-    #include "EGASwitchCase_program_cpp"
+static auto getEGAProgram(uint32_t IPP, Polarity HSync) {
+  switch (HSync) {
+  case Polarity::Pos: {
+    switch (IPP) {
+#include "EGASwitchCase_PosHSync_program_cpp"
+    }
+    break;
+  }
+  case Polarity::Neg: {
+    switch (IPP) {
+#include "EGASwitchCase_NegHSync_program_cpp"
+    }
+    break;
+  }
   }
   std::cerr << "Bad IPP getEGAProgram(" << IPP << ")\n";
   exit(1);
 }
-static auto getCGAProgram(uint32_t IPP) {
-  switch(IPP) {
-    #include "CGASwitchCase_program_cpp"
+
+static auto getCGAProgram(uint32_t IPP, Polarity HSync) {
+  switch (HSync) {
+  case Polarity::Pos: {
+    switch (IPP) {
+#include "CGASwitchCase_PosHSync_program_cpp"
+    break;
+    }
+  }
+  case Polarity::Neg: {
+    switch (IPP) {
+#include "CGASwitchCase_NegHSync_program_cpp"
+    }
+    break;
+  }
   }
   std::cerr << "Bad IPP getCGAProgram(" << IPP << ")\n";
   exit(1);
 }
 
-static auto getMDAProgram(uint32_t IPP) {
-  switch(IPP) {
-    #include "MDASwitchCase_program_cpp"
+static auto getMDAProgram(uint32_t IPP, Polarity HSync) {
+  switch (HSync) {
+  case Polarity::Pos: {
+    switch (IPP) {
+#include "MDASwitchCase_PosHSync_program_cpp"
+    }
+    break;
+  }
+  case Polarity::Neg: {
+    switch (IPP) {
+#include "MDASwitchCase_NegHSync_program_cpp"
+    }
+    break;
+  }
   }
   std::cerr << "Bad IPP getMDAProgram(" << IPP << ")\n";
   exit(1);
 }
 
-static std::pair<uint32_t, uint32_t> getIPPRange(Resolution M) {
+static std::pair<uint32_t, uint32_t> getIPPRange(TTL M) {
   switch (M) {
-  case EGA_640x350_60Hz:
+  case TTL::CGA:
+  case TTL::EGA:
     return {4, 16};
-  case CGA_640x200_60Hz:
-  case EGA_640x200_60Hz:
-    return {4, 16};
-  case MDA_720x350_50Hz:
+  case TTL::MDA:
     return {5, 16};
   }
   std::cerr << "Bad Mode in getIPPRange(" << modeToStr(M) << ")\n";
   exit(1);
 }
 
-bool TTLReader::haveBorderFromFlash(Resolution M) const {
-  switch (M) {
-  case CGA_640x200_60Hz:
-  case EGA_640x200_60Hz:
-    return (bool)CGABorderOpt;
-  case EGA_640x350_60Hz:
-    return (bool)EGABorderOpt;
-  case MDA_720x350_50Hz:
+bool TTLReader::haveBorderFromFlash() const {
+  switch (TimingsTTL.Mode) {
+  case TTL::CGA:
+  case TTL::EGA:
+    return isHighRes(TimingsTTL) ? (bool)EGABorderOpt : (bool)CGABorderOpt;
+  case TTL::MDA:
     return (bool)MDABorderOpt;
   }
   return false;
 }
 
 void TTLReader::switchPio() {
+  DBG_PRINT(std::cout << "unloadAllPio()\n";)
   PioLoader.unloadAllPio(TTLPio, {TTLSM, TTLBorderSM});
-  DBG_PRINT(std::cout << "\nSwitching PIO to " << modeToStr(Buff.getMode())
-                      << "\n";)
+  DBG_PRINT(std::cout << "\nTTLReader Switching PIO to "
+                      << modeToStr(TimingsTTL.Mode) << "\n\n";)
 
-  auto GetBorderIPP = [](Resolution M) {
-    switch (M) {
-    case EGA_640x350_60Hz:
-      return 10;
-    case EGA_640x200_60Hz:
-    case CGA_640x200_60Hz:
-      return 10;
-    case MDA_720x350_50Hz:
-      return 10;
-    default:
-      std::cerr << " GetBorderIPP BAD Mode " << modeToStr(M) << "\n";
-      exit(1);
-    }
-  };
+  auto GetBorderIPP = [](TTL M) { return 10; };
 
-  auto M = Buff.getMode();
   double PicoClk_Hz = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_SYS) * 1000;
-  float BorderClkDiv = PicoClk_Hz / (getPxClkFor(M) * GetBorderIPP(M));
-  DBG_PRINT(std::cout << "\n\nBORDER CLKDIV=" << BorderClkDiv << "\n";)
+  float BorderClkDiv =
+      PicoClk_Hz / (getPxClkFor(TimingsTTL) * GetBorderIPP(TimingsTTL.Mode));
+  DBG_PRINT(std::cout << "BORDER CLKDIV=" << BorderClkDiv << "\n";)
 
-  switch (M) {
-  case MDA_720x350_50Hz: {
+  switch (TimingsTTL.Mode) {
+  case TTL::MDA: {
     TTLOffset = PioLoader.loadPIOProgram(
-        TTLPio, TTLSM, getMDAProgram(MDAIPP),
+        TTLPio, TTLSM, getMDAProgram(MDAIPP, HSyncPolarity),
         [this](PIO Pio, uint SM, uint Offset) {
           MDA720x350PioConfig(Pio, SM, Offset, MDA_VI_GPIO, TTL_HSYNC_GPIO,
-                              MDAClkDiv.getInt(), MDAClkDiv.getFrac(), MDAIPP);
+                              MDAClkDiv.getInt(), MDAClkDiv.getFrac(), MDAIPP,
+                              HSyncPolarity);
         });
 
     TTLBorderOffset = PioLoader.loadPIOProgram(
@@ -537,46 +680,49 @@ void TTLReader::switchPio() {
                         /*Counter=*/MDABorderCounter);
     break;
   }
-  case CGA_640x200_60Hz:
-  case EGA_640x200_60Hz: {
-    TTLOffset = PioLoader.loadPIOProgram(
-        TTLPio, TTLSM, getCGAProgram(CGAIPP),
-        [this](PIO Pio, uint SM, uint Offset) {
-          CGA640x200PioConfig(Pio, SM, Offset, CGA_ACTUAL_RGB_GPIO,
-                              TTL_HSYNC_GPIO, CGAClkDiv.getInt(),
-                              CGAClkDiv.getFrac(), CGAIPP);
-        });
+  case TTL::CGA:
+  case TTL::EGA: {
+    if (isHighRes(TimingsTTL)) {
+      TTLOffset = PioLoader.loadPIOProgram(
+          TTLPio, TTLSM, getEGAProgram(EGAIPP, HSyncPolarity),
+          [this](PIO Pio, uint SM, uint Offset) {
+            EGA640x350PioConfig(Pio, SM, Offset, EGA_RGB_GPIO, TTL_HSYNC_GPIO,
+                                EGAClkDiv.getInt(), EGAClkDiv.getFrac(), EGAIPP,
+                                HSyncPolarity);
+          });
 
-    TTLBorderOffset = PioLoader.loadPIOProgram(
-        TTLBorderPio, TTLBorderSM, &CGA640x200Border_program,
-        [BorderClkDiv](PIO Pio, uint SM, uint Offset) {
-          CGA640x200BorderPioConfig(Pio, SM, Offset, CGA_ACTUAL_RGB_GPIO,
-                                    BorderClkDiv);
-        });
-    pio_sm_put_blocking(TTLBorderPio, TTLBorderSM, /*Counter=*/CGABorderCounter);
+      TTLBorderOffset = PioLoader.loadPIOProgram(
+          TTLBorderPio, TTLBorderSM, &EGA640x350Border_program,
+          [BorderClkDiv](PIO Pio, uint SM, uint Offset) {
+            EGA640x350BorderPioConfig(Pio, SM, Offset, EGA_RGB_GPIO,
+                                      BorderClkDiv);
+          });
+      pio_sm_put_blocking(TTLBorderPio, TTLBorderSM,
+                          /*Counter=*/EGABorderCounter);
+
+    } else {
+      TTLOffset = PioLoader.loadPIOProgram(
+          TTLPio, TTLSM, getCGAProgram(CGAIPP, HSyncPolarity),
+          [this](PIO Pio, uint SM, uint Offset) {
+            CGA640x200PioConfig(Pio, SM, Offset, CGA_ACTUAL_RGB_GPIO,
+                                TTL_HSYNC_GPIO, CGAClkDiv.getInt(),
+                                CGAClkDiv.getFrac(), CGAIPP, HSyncPolarity);
+          });
+
+      TTLBorderOffset = PioLoader.loadPIOProgram(
+          TTLBorderPio, TTLBorderSM, &CGA640x200Border_program,
+          [BorderClkDiv](PIO Pio, uint SM, uint Offset) {
+            CGA640x200BorderPioConfig(Pio, SM, Offset, CGA_ACTUAL_RGB_GPIO,
+                                      BorderClkDiv);
+          });
+      pio_sm_put_blocking(TTLBorderPio, TTLBorderSM,
+                          /*Counter=*/CGABorderCounter);
+    }
     break;
   }
-  case EGA_640x350_60Hz: {
-    TTLOffset = PioLoader.loadPIOProgram(
-        TTLPio, TTLSM, getEGAProgram(EGAIPP),
-        [this](PIO Pio, uint SM, uint Offset) {
-          EGA640x350PioConfig(Pio, SM, Offset, EGA_RGB_GPIO, TTL_HSYNC_GPIO,
-                              EGAClkDiv.getInt(), EGAClkDiv.getFrac(), EGAIPP);
-        });
-
-    TTLBorderOffset = PioLoader.loadPIOProgram(
-        TTLBorderPio, TTLBorderSM, &EGA640x350Border_program,
-        [BorderClkDiv](PIO Pio, uint SM, uint Offset) {
-          EGA640x350BorderPioConfig(Pio, SM, Offset, EGA_RGB_GPIO,
-                                    BorderClkDiv);
-        });
-    pio_sm_put_blocking(TTLBorderPio, TTLBorderSM,
-                        /*Counter=*/EGABorderCounter);
-    break;
-  }
   }
 
-  if (!haveBorderFromFlash(M))
+  if (!haveBorderFromFlash())
     AutoAdjust.forceStart(/*AlwaysON=*/false);
   Buff.clear();
 }
@@ -603,19 +749,16 @@ void TTLReader::getDividerAutomatically() {
   // We choose the PIO IPP with the smallest divider error. This should give us
   // a pixel-perfect image.
   //
-  auto M = Buff.getMode();
-  uint32_t LinePixels = Timing[M][H_FrontPorch] + Timing[M][H_Visible] +
-                        Timing[M][H_BackPorch] + Timing[M][H_Sync];
 
   // Find the best Pio instr delay by checking the error between the ideal
   // divider and what we get from the Pico's divider precision (256 fractional
   // positions).
-  uint32_t BestIPP;
+  uint32_t BestIPP = 0;
   double BestErr = std::numeric_limits<double>::max();
   ClkDivider BestClkDiv;
   double PicoClk_Hz = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_SYS) * 1000;
-  uint32_t PixelClk_Hz = getPxClkFor(M);
-  auto IPPRange = getIPPRange(M);
+  uint32_t PixelClk_Hz = getPxClkFor(TimingsTTL);
+  auto IPPRange = getIPPRange(TimingsTTL.Mode);
   for (uint32_t IPP = IPPRange.first, E = IPPRange.second; IPP <= E; ++IPP) {
     double ClkDiv = (double)PicoClk_Hz / (PixelClk_Hz * IPP);
     ClkDivider ActualClkDivFloor(ClkDiv);
@@ -625,9 +768,9 @@ void TTLReader::getDividerAutomatically() {
     auto CheckDiv = [this, IPP, ClkDiv, &BestErr, &BestIPP,
                      &BestClkDiv](const ClkDivider &Div) {
       double Err = std::abs(Div.get() - ClkDiv);
-      DBG_PRINT(std::cout << "### IPP=" << IPP << " ClkDiv=" << ClkDiv
-                          << " Div=" << Div << " Div.get()=" << Div.get()
-                          << " Err=" << Err << "\n";)
+      // DBG_PRINT(std::cout << "### IPP=" << IPP << " ClkDiv=" << ClkDiv
+      //                     << " Div=" << Div << " Div.get()=" << Div.get()
+      //                     << " Err=" << Err << "\n";)
       if (Err < BestErr) {
         BestErr = Err;
         BestIPP = IPP;
@@ -641,19 +784,20 @@ void TTLReader::getDividerAutomatically() {
                       << " BestIPP=" << BestIPP << " BestErr=" << BestErr
                       << " BestClkDiv=" << BestClkDiv << "\n";)
 
-  switch (M) {
-  case EGA_640x350_60Hz:
-    EGAIPP = BestIPP;
-    EGAClkDiv = ClkDivider(BestClkDiv);
-    DBG_PRINT(std::cout << "EGAClkDiv=" << EGAClkDiv << "\n";)
+  switch (TimingsTTL.Mode) {
+  case TTL::CGA:
+  case TTL::EGA:
+    if (isHighRes(TimingsTTL)) {
+      EGAIPP = BestIPP;
+      EGAClkDiv = ClkDivider(BestClkDiv);
+      DBG_PRINT(std::cout << "EGAClkDiv=" << EGAClkDiv << "\n";)
+    } else {
+      CGAIPP = BestIPP;
+      CGAClkDiv = ClkDivider(BestClkDiv);
+      DBG_PRINT(std::cout << "CGAClkDiv=" << CGAClkDiv << "\n";)
+    }
     break;
-  case EGA_640x200_60Hz:
-  case CGA_640x200_60Hz:
-    CGAIPP = BestIPP;
-    CGAClkDiv = ClkDivider(BestClkDiv);
-    DBG_PRINT(std::cout << "CGAClkDiv=" << CGAClkDiv << "\n";)
-    break;
-  case MDA_720x350_50Hz:
+  case TTL::MDA:
     MDAIPP = BestIPP;
     MDAClkDiv = ClkDivider(BestClkDiv);
     DBG_PRINT(std::cout << "MDAClkDiv=" << MDAClkDiv << "\n";)
@@ -661,18 +805,24 @@ void TTLReader::getDividerAutomatically() {
   }
 }
 
-bool TTLReader::getVSyncPolarity() const {
-  if (pio_sm_is_rx_fifo_empty(VSyncPolarityPio, VSyncPolaritySM)) {
-    DBG_PRINT(std::cerr << "ERROR: getVSyncPolarity() empty!\n";)
+static void legalizeManualTTL(TTLDescrReduced &ManualTTL) {
+  uint32_t VertMax = 0;
+  uint32_t HorizMax = 0;
+  switch (ManualTTL.Mode) {
+  case TTL::CGA:
+  case TTL::EGA:
+    HorizMax = DisplayBuffer::BuffX + XB;
+    VertMax = DisplayBuffer::BuffY + YB;
+    break;
+  case TTL::MDA:
+    HorizMax = 2 * DisplayBuffer::BuffX + XB;
+    VertMax = DisplayBuffer::BuffY + YB;
+    break;
   }
-  uint32_t Raw = pio_sm_get_blocking(VSyncPolarityPio, VSyncPolaritySM);
-  uint32_t VSyncLowCnt = VSyncPolarityCounter - Raw;
-  static constexpr const uint32_t LoopInstrs = 2u; // 2 instrs in count loop
-  static constexpr const uint32_t InstrNs = 4u;    // actually 3.7ns
-  uint32_t LowNs = LoopInstrs * InstrNs * VSyncLowCnt;
-  auto M = Buff.getMode();
-  uint32_t VertNs = (float)1000000000 / Timing[M][V_Hz];
-  return LowNs > VertNs / 2 ? Pos : Neg;
+  ManualTTL.V_Visible =
+      std::clamp(ManualTTL.V_Visible, MANUAL_TTL_VERT_MIN, VertMax);
+  ManualTTL.H_Visible =
+      std::clamp(ManualTTL.H_Visible, MANUAL_TTL_HORIZ_MIN, HorizMax);
 }
 
 void TTLReader::saveToFlash() {
@@ -688,183 +838,606 @@ void TTLReader::saveToFlash() {
       EGABorderOpt ? EGABorderOpt->getUint32() : InvalidBorder;
   FlashValues[MDABorderIdx] =
       MDABorderOpt ? MDABorderOpt->getUint32() : InvalidBorder;
+  FlashValues[ManualTTL_EnabledIdx] = ManualTTLEnabled;
+  FlashValues[ManualTTL_ModeIdx] =
+      ManualTTLEnabled ? getTTLIdx(ManualTTL.Mode) : 0;
+  FlashValues[ManualTTL_H_VisibleIdx] =
+      ManualTTLEnabled ? ManualTTL.H_Visible : 0;
+  FlashValues[ManualTTL_V_VisibleIdx] =
+      ManualTTLEnabled ? ManualTTL.V_Visible : 0;
+
+  FlashValues[XBorderAUTOIdx] =
+      ManualTTLEnabled && XBorderAUTO ? XBorderAUTO : 0;
+  FlashValues[ManualTTL_H_FrontPorchIdx] =
+      ManualTTLEnabled ? ManualTTL.H_FrontPorch : 0;
+
+  FlashValues[YBorderAUTOIdx] =
+      ManualTTLEnabled && YBorderAUTO ? YBorderAUTO : 0;
+  FlashValues[ManualTTL_V_FrontPorchIdx] =
+      ManualTTLEnabled ? ManualTTL.V_FrontPorch : 0;
+  // Legalize just in case.
+  legalizeManualTTL(ManualTTL);
+
   Flash.write(FlashValues);
   DBG_PRINT(std::cout << "DONE!\n";)
 }
 
-bool TTLReader::tryChangePixelClock() {
-  auto AutoAdjustBtnState = AutoAdjustBtn.get();
-  auto PxClkBtnState = PxClkBtn.get();
-
-  bool PxClkBtnPressed = PxClkBtnState == ButtonState::Release ||
-                         PxClkBtnState == ButtonState::MedRelease;
-  if (PxClkBtnPressed) {
-    if (AdjPxClkMode != PxClkMode::Modify) {
-      // If we just entered Pixel Clock adjust mode, show message on screen.
-      static constexpr const int BuffSz = 34;
-      char PxClkTxt[BuffSz];
-      uint32_t &PixelClock = getPxClkFor(Buff.getMode());
-      snprintf(PxClkTxt, BuffSz, "%s\nPxCLK:%2.3fMHz",
-               modeToStr(Buff.getMode()), (float)PixelClock / 1000000);
-      Buff.displayTxt(PxClkTxt, 0, 0, DISPLAY_TXT_ZOOM, /*Center=*/true);
-      sleep_ms(PX_CLK_INITIAL_TXT_DISPLAY_MS);
-      AdjPxClkMode = PxClkMode::Modify;
-      AdjPxClkCnt = ADJUST_PX_CLK_CNT;
-      return false;
-    }
-    AdjPxClkMode = PxClkMode::Modify; // Not in reset
+void TTLReader::toggleManualTTL() {
+  if (ManualTTLEnabled) {
+    ManualTTLEnabled = false;
+  } else {
+    ManualTTLEnabled = true;
+    ManualTTL = TimingsTTL;     // Note this doesn't copy all values
   }
-  if (AdjPxClkMode == PxClkMode::None)
-    return false;
+}
 
-  if (PxClkBtnState == ButtonState::LongPress) {
-    // Save to flash and return.
+void TTLReader::printManualTTLMenu() {
+  ManualTTLMenu.clearItems();
+  // ON/OFF
+  ManualTTLMenu.addMenuItem(
+      ManualTTLMenu_Enabled_ItemIdx, true,
+      /*Prefix=*/"",
+      /*Item=*/ManualTTLEnabled ? "MANUAL-TTL" : "AUTO-TTL");
+  // Mode (e.g., MDA/CGA/EGA
+  ManualTTLMenu.addMenuItem(ManualTTLMenu_Mode_ItemIdx, ManualTTLEnabled,
+                            /*Prefix=*/"", /*Item=*/modeToStr(ManualTTL.Mode));
+  // Horizontal
+  ManualTTLMenu.addMenuItem(
+      ManualTTLMenu_Horiz_ItemIdx, ManualTTLEnabled,
+      /*Prefix=*/"", /*Item=*/
+      std::to_string(ManualTTL.H_Visible -
+                     /*XB is an implementation detail, hide it from user*/ XB));
+  // Vertical
+  ManualTTLMenu.addMenuItem(ManualTTLMenu_Vert_ItemIdx, ManualTTLEnabled,
+                            /*Prefix=*/"x",
+                            /*Item=*/std::to_string(ManualTTL.V_Visible - YB));
+
+  // A switch for turning on/off XBorder setting
+  ManualTTLMenu.addMenuItem(
+      ManualTTLMenu_XBorderAUTO_ItemIdx, ManualTTLEnabled,
+      /*Prefix=*/"X:", /*Item=*/XBorderAUTO ? "AUTO" : "MANUAL");
+
+  ManualTTLMenu.addMenuItem(
+      ManualTTLMenu_XBorder_ItemIdx, ManualTTLEnabled && !XBorderAUTO,
+      /*Prefix=*/"", /*Item=*/std::to_string(ManualTTL.H_FrontPorch));
+
+  // A switch for turning on/off YBorder setting
+  ManualTTLMenu.addMenuItem(
+      ManualTTLMenu_YBorderAUTO_ItemIdx, ManualTTLEnabled,
+      /*Prefix=*/"Y:", /*Item=*/YBorderAUTO ? "AUTO" : "MANUAL");
+
+  ManualTTLMenu.addMenuItem(
+      ManualTTLMenu_YBorder_ItemIdx, ManualTTLEnabled && !YBorderAUTO,
+      /*Prefix=*/"", /*Item=*/std::to_string(ManualTTL.V_FrontPorch));
+
+  ManualTTLMenu.display(/*Selection=*/ManualTTLMenuIdx, MANUAL_TTL_DISPLAY_MS);
+}
+
+bool TTLReader::manualTTLMode() {
+  // Turn ON ManualTTL on long-press of both buttons.
+  if (UsrAction == UserAction::None) {
+    DBG_PRINT(std::cout << "Manual TTL ON!\n";)
+    UsrAction = UserAction::ManualTTL;
+    // Start with the current mode.
+    ManualTTL = TimingsTTL;
+    // Point to "Mode"
+    ManualTTLMenuIdx = ManualTTLEnabled ? 1 : 0;
+    // Print the menu.
+    printManualTTLMenu();
+    // Set the timeout timer.
+    auto Now = FrameEnd;
+    ManualTTLExitTime = delayed_by_ms(Now, MANUAL_TTL_TIMEOUT_MS);
+    // To avoid misclicks (because of the double long-press) wait until both
+    // buttons are released to allow entering the menus.
+    AllowEnterMenu = false;
+    return true;
+  }
+  if (ManualTTLExitTime &&
+      to_ms_since_boot(FrameEnd) > to_ms_since_boot(*ManualTTLExitTime)) {
     saveToFlash();
-    Buff.displayTxt("PxCLK SAVED TO FLASH", 0, 0, DISPLAY_TXT_ZOOM,
-                    /*Center=*/true);
-    sleep_ms(PX_CLK_TXT_DISPLAY_MS + 1000);
-    AdjPxClkMode = PxClkMode::None;
-    return false;
+    DBG_PRINT(std::cout << "MANUAL TTL SAVED TO FLASH!\n";)
+    displayTxt("MANUAL TTL SAVED TO FLASH", MANUAL_TTL_DISPLAY_DONE_MS);
+    // Turn off the timer.
+    ManualTTLExitTime = std::nullopt;
+    UsrAction = UserAction::None;
+    return true;
   }
-  if (AutoAdjustBtnState == ButtonState::LongPress) {
-    if (AdjPxClkMode == PxClkMode::Modify) {
-      Buff.displayTxt("RESET PxCLK TO DEFAULTS?", 0, 0, DISPLAY_TXT_ZOOM,
-                      /*Center=*/true);
-      sleep_ms(PX_CLK_RESET_DISPLAY_MS);
-      AdjPxClkMode = PxClkMode::Reset;
-      return false;
-    } else if (AdjPxClkMode == PxClkMode::Reset) {
-      CGAPxClk = Timing[CGA_640x200_60Hz][PxClk];
-      EGAPxClk = Timing[EGA_640x350_60Hz][PxClk];
-      MDAPxClk = Timing[MDA_720x350_50Hz][PxClk];
-      saveToFlash();
+  // Because of the double long-press wait until the user has released both
+  // buttons until we allow them to use the menus.
+  if (!AllowEnterMenu &&
+      (AutoAdjustBtn.get() == ButtonState::Release ||
+       AutoAdjustBtn.get() == ButtonState::None) &&
+      (PxClkBtn.get() == ButtonState::Release ||
+       PxClkBtn.get() == ButtonState::None)) {
+    AllowEnterMenu = true;
+  }
+  if (!AllowEnterMenu)
+    return false;
+
+  bool LongLeft = AutoAdjustBtn.get() == ButtonState::LongPress;
+  bool LongRight = PxClkBtn.get() == ButtonState::LongPress;
+  if (LongLeft || LongRight) {
+    if (LongRight) {
+      ManualTTLMenu.incrSelection(ManualTTLMenuIdx);
+    } else if (LongLeft) {
+      ManualTTLMenu.decrSelection(ManualTTLMenuIdx);
+    }
+    printManualTTLMenu();
+    return true;
+  }
+  // Manual TTL mode.
+  bool Left = AutoAdjustBtn.get() == ButtonState::Release;
+  bool Right = PxClkBtn.get() == ButtonState::Release;
+  if (Left || Right) {
+    if (Right) {
+      switch (ManualTTLMenuIdx) {
+      case ManualTTLMenu_Enabled_ItemIdx: {
+        // ON/OFF
+        toggleManualTTL();
+        break;
+      }
+      case ManualTTLMenu_Mode_ItemIdx: {
+        // Mode
+        int NextIdx = (getTTLIdx(ManualTTL.Mode) + 1) % (MaxTTLIdx + 1);
+        ManualTTL.Mode = getTTLAtIdx(NextIdx);
+        break;
+      }
+      case ManualTTLMenu_Horiz_ItemIdx: {
+        // Horizontal
+        auto NextHoriz = ManualTTL.H_Visible + MANUAL_TTL_HORIZ_STEP;
+        ManualTTL.H_Visible = NextHoriz;
+        break;
+      }
+      case ManualTTLMenu_Vert_ItemIdx: {
+        // Vertical
+        auto NextVert = ManualTTL.V_Visible + MANUAL_TTL_VERT_STEP;
+        ManualTTL.V_Visible = NextVert;
+        break;
+      }
+      case ManualTTLMenu_XBorderAUTO_ItemIdx: {
+        // XBorderAUTO switch
+        XBorderAUTO = !XBorderAUTO;
+        break;
+      }
+      case ManualTTLMenu_XBorder_ItemIdx: {
+        // XBorder
+        auto NextXBorder =
+            std::min(MANUAL_TTL_MAX_XBORDER,
+                     ManualTTL.H_FrontPorch + MANUAL_TTL_XBORDER_STEP);
+        ManualTTL.H_FrontPorch = NextXBorder;
+        break;
+      }
+      case ManualTTLMenu_YBorderAUTO_ItemIdx: {
+        // YBorderAUTO switch
+        YBorderAUTO = !YBorderAUTO;
+        break;
+      }
+      case ManualTTLMenu_YBorder_ItemIdx: {
+        // YBorder
+        auto NextYBorder =
+            std::min(MANUAL_TTL_MAX_YBORDER,
+                     ManualTTL.V_FrontPorch + MANUAL_TTL_YBORDER_STEP);
+        ManualTTL.V_FrontPorch = NextYBorder;
+        break;
+      }
+      }
+      legalizeManualTTL(ManualTTL);
+      printManualTTLMenu();
+      return true;
+    }
+    if (Left) {
+      switch (ManualTTLMenuIdx) {
+      case ManualTTLMenu_Enabled_ItemIdx: {
+        // ON/OFF
+        toggleManualTTL();
+        break;
+      }
+      case ManualTTLMenu_Mode_ItemIdx: {
+        // Mode
+        int CurrIdx = getTTLIdx(ManualTTL.Mode);
+        int PrevIdx = CurrIdx > 0 ? CurrIdx - 1 : MaxTTLIdx;
+        ManualTTL.Mode = getTTLAtIdx(PrevIdx);
+        break;
+      }
+      case ManualTTLMenu_Horiz_ItemIdx: {
+        // Horizontal
+        auto PrevHoriz = ManualTTL.H_Visible - MANUAL_TTL_HORIZ_STEP;
+        ManualTTL.H_Visible = PrevHoriz;
+        break;
+      }
+      case ManualTTLMenu_Vert_ItemIdx: {
+        // Vertical
+        auto PrevVert = ManualTTL.V_Visible - MANUAL_TTL_VERT_STEP;
+        ManualTTL.V_Visible = PrevVert;
+        break;
+      }
+      case ManualTTLMenu_XBorderAUTO_ItemIdx: {
+        // XBorderAUTO switch
+        XBorderAUTO = !XBorderAUTO;
+        break;
+      }
+      case ManualTTLMenu_XBorder_ItemIdx: {
+        // XBorder
+        auto PrevXBorder =
+            ManualTTL.H_FrontPorch < MANUAL_TTL_XBORDER_STEP
+                ? 0lu
+                : ManualTTL.H_FrontPorch - MANUAL_TTL_XBORDER_STEP;
+        ManualTTL.H_FrontPorch = PrevXBorder;
+        break;
+      }
+      case ManualTTLMenu_YBorderAUTO_ItemIdx: {
+        // YBorderAUTO switch
+        YBorderAUTO = !YBorderAUTO;
+        break;
+      }
+      case ManualTTLMenu_YBorder_ItemIdx: {
+        // YBorder
+        auto PrevYBorder =
+            ManualTTL.V_FrontPorch < MANUAL_TTL_YBORDER_STEP
+                ? 0lu
+                : ManualTTL.V_FrontPorch - MANUAL_TTL_YBORDER_STEP;
+        ManualTTL.V_FrontPorch = PrevYBorder;
+        break;
+      }
+      }
+      legalizeManualTTL(ManualTTL);
+      printManualTTLMenu();
+      return true;
+    }
+  }
+  return false;
+}
+
+void TTLReader::checkAndUpdateMode() {
+  // DBG_PRINT(std::cout << "Frame us=" << FrameUs << " Hz=" << VHz
+  //                     << " Polarity=" << getPolarityStr(VSyncPolarity)
+  //                     << " mode=" << modeToStr(Mode) << "\n";)
+  std::optional<TTLDescr> NewModeOpt;
+  if (ManualTTLEnabled) {
+    TTLDescr Tmp;
+    Tmp = ManualTTL;
+    NewModeOpt = Tmp;
+  } else {
+    NewModeOpt = getModeForVPolarityAndHz(VSyncPolarity, VHz);
+  }
+
+  if (!NewModeOpt) {
+    static uint32_t ThrottleMsgCnt;
+    if (ThrottleMsgCnt++ % 64 == 0) {
+      DBG_PRINT(std::cout << "ManualTTLEnabled=" << ManualTTLEnabled << "\n";)
+      ManualTTL.dump(std::cout);
+      DBG_PRINT(std::cout << "Could not match Polarity="
+                          << polarityToStr(VSyncPolarity) << " and Hz=" << VHz
+                          << "\n";)
+      // Display a helper debugging message that this is an unknown mode.
+      if (UsrAction == UserAction::None && UnknownMsgCnt > 0) {
+        --UnknownMsgCnt;
+        char Buff[40];
+        snprintf(Buff, 40, "UNKNOWN MODE: VSYNC %dHz POLARITY:%s", (int)VHz,
+                 polarityToStr(VSyncPolarity));
+        displayTxt(Buff, UNKNOWN_MODE_MS);
+      }
+    }
+    return;
+  }
+  // Reset the counter for the next time we get an unknown mode.
+  UnknownMsgCnt = UNKNOWN_MODE_SHOW_MSG_COUNT;
+
+  bool ChangeMode =
+      *NewModeOpt != TimingsTTL; // NOTE: This ignore porches/retraces/Hz
+  if (ChangeMode) {
+    DBG_PRINT(std::cout << "\nChangeMode: " << *NewModeOpt << "\n";)
+    DBG_PRINT(std::cout << "      From: " << TimingsTTL << "\n";)
+    DBG_PRINT(std::cout << "OLD:\n";)
+    DBG_PRINT(TimingsTTL.dumpFull(std::cout);)
+    DBG_PRINT(std::cout << "NEW:\n";)
+    DBG_PRINT(NewModeOpt->dumpFull(std::cout);)
+    if ((*NewModeOpt).Mode != TimingsTTL.Mode) {
+      Buff.setMode(*NewModeOpt);
+      TimingsTTL = *NewModeOpt;
       getDividerAutomatically();
       switchPio();
-      Buff.displayTxt("RESET OK", 0, 0, DISPLAY_TXT_ZOOM, /*Center=*/true);
-      sleep_ms(PX_CLK_RESET_DISPLAY_MS);
-      AdjPxClkMode = PxClkMode::None;
-      return false;
     }
   }
-  bool AutoAdjBtnPressed = AutoAdjustBtnState == ButtonState::Release ||
-                           AutoAdjustBtnState == ButtonState::MedRelease;
-  if (!PxClkBtnPressed && !AutoAdjBtnPressed) {
-    if (AdjPxClkMode != PxClkMode::None && AdjPxClkCnt-- == 0) {
-      Buff.displayTxt("EXIT PxCLK", 0, 0, DISPLAY_TXT_ZOOM, /*Center=*/true);
-      sleep_ms(PX_CLK_TXT_DISPLAY_MS);
-      AdjPxClkMode = PxClkMode::None;
-      return false;
+}
+
+void TTLReader::displayTTLInfo() {
+  TimingsTTL.PxClk = getPxClkFor(TimingsTTL);
+  std::stringstream SS;
+  SS << "TTL INFO\n";
+  SS << "--------\n";
+  TimingsTTL.dumpFull(SS);
+  Buff.displayPage(SS.str());
+}
+
+void TTLReader::handleButtons() {
+  AutoAdjustBtn.tick();
+  PxClkBtn.tick();
+
+  auto BtnA = AutoAdjustBtn.get();
+  auto BtnB = PxClkBtn.get();
+
+  bool BothLongPress =
+      (BtnA == ButtonState::Pressed && BtnB == ButtonState::LongPress) ||
+      (BtnA == ButtonState::LongPress && BtnB == ButtonState::Pressed);
+
+  if ((BothLongPress && UsrAction == UserAction::None) ||
+      UsrAction == UserAction::ManualTTL) {
+    // Long press to enter ManualTTL.
+    if (manualTTLMode()) {
+      // Reset the timer for exiting ManualTTL.
+      ManualTTLExitTime = delayed_by_ms(FrameEnd, MANUAL_TTL_TIMEOUT_MS);
+
+      checkAndUpdateMode();
     }
-    return false;
+    return;
   }
-  AdjPxClkCnt = ADJUST_PX_CLK_CNT;
-  bool SmallStep = AutoAdjustBtnState == ButtonState::MedRelease ||
-                   PxClkBtnState == ButtonState::MedRelease;
-  changePxClk(/*Increase=*/PxClkBtnPressed, SmallStep);
-  getDividerAutomatically();
-  switchPio();
-  return true;
+
+  if (BtnB == ButtonState::LongPress &&
+      UsrAction == UserAction::None) {
+    if (NoSignal) {
+      displayTxt("NO TTL SIGNAL", NO_TTL_SIGNAL_MS);
+      return;
+    }
+    // If we have TTL signal then this prints TTL Info
+    UsrAction = UserAction::TTLInfo;
+    displayTTLInfo();
+    return;
+  }
+
+  if (UsrAction == UserAction::TTLInfo &&
+      (BtnA == ButtonState::Release || BtnA == ButtonState::LongPress ||
+       BtnB == ButtonState::Release || BtnB == ButtonState::LongPress)) {
+    // Quick exit from Info with a simple push.
+    UsrAction = UserAction::None;
+    Buff.clear();
+    return;
+  }
+
+  if (UsrAction == UserAction::None) {
+    if (BtnA == ButtonState::Release) {
+      if (NoSignal) {
+        displayTxt("NO TTL SIGNAL", NO_TTL_SIGNAL_MS);
+        return;
+      }
+      AutoAdjust.runAutoAdjust();
+      return;
+    }
+    if (BtnA == ButtonState::LongPress) {
+      if (NoSignal) {
+        displayTxt("NO TTL SIGNAL ", NO_TTL_SIGNAL_MS);
+        return;
+      }
+      AutoAdjust.runAlwaysAutoAdjust();
+      return;
+    }
+  }
+
+  // Pixel clock adjustment
+  if (UsrAction == UserAction::None ||
+      UsrAction == UserAction::PxClkMode_Modify) {
+
+    if (UsrAction == UserAction::None &&
+        (BtnB == ButtonState::Release || BtnB == ButtonState::MedRelease)) {
+      if (NoSignal) {
+        displayTxt("NO TTL SIGNAL", NO_TTL_SIGNAL_MS);
+        return;
+      }
+      // Enter pixel clk mode for the first time: display value but dont' change
+      // it.
+      displayPxClk();
+      UsrAction = UserAction::PxClkMode_Modify;
+      PxClkEndTime = delayed_by_ms(FrameEnd, PX_CLK_END_TIME_MS);
+      ChangedPxClk = false;
+      return;
+    }
+    // This is normal operation. We have already displayed the current PxClk,
+    // now we can adjust it.
+    if (BtnB == ButtonState::Release || BtnB == ButtonState::MedRelease ||
+        BtnA == ButtonState::Release || BtnA == ButtonState::MedRelease) {
+      if (NoSignal) {
+        displayTxt("NO TTL SIGNAL", NO_TTL_SIGNAL_MS);
+        PxClkEndTime = std::nullopt;
+        UsrAction = UserAction::None;
+        return;
+      }
+      ChangedPxClk = true;
+      UsrAction = UserAction::PxClkMode_Modify;
+      bool IncreasePxClk =
+          BtnB == ButtonState::Release || BtnB == ButtonState::MedRelease;
+      PxClkEndTime = delayed_by_ms(FrameEnd, PX_CLK_END_TIME_MS);
+      bool SmallStep =
+          BtnA == ButtonState::MedRelease || BtnB == ButtonState::MedRelease;
+      changePxClk(/*Increase=*/IncreasePxClk, SmallStep);
+      getDividerAutomatically();
+      switchPio();
+      checkAndUpdateMode();
+      return;
+    }
+    if (PxClkEndTime &&
+        to_ms_since_boot(FrameEnd) > to_ms_since_boot(*PxClkEndTime)) {
+      PxClkEndTime = std::nullopt;
+      if (ChangedPxClk) {
+        displayTxt("PxCLK SAVED TO FLASH ", PX_CLK_EXIT_DISPLAY_MS);
+        saveToFlash();
+      } else {
+        displayTxt("PxCLK UNCHANGED ", PX_CLK_EXIT_DISPLAY_MS);
+      }
+      UsrAction = UserAction::None;
+      return;
+    }
+  }
+}
+
+void TTLReader::displayTxt(const std::string &Txt, int Time) {
+  DBG_PRINT(std::cout << "TTLReader::" << __FUNCTION__ << " Txt=" << Txt
+                      << " Time=" << Time << "\n";)
+  Buff.displayTxt(Txt, 0, /*Center=*/true);
+  DisplayTxtEndTime = delayed_by_ms(get_absolute_time(), Time);
+}
+
+void TTLReader::displayTxtTick() {
+  if (DisplayTxtEndTime) {
+    if (to_ms_since_boot(get_absolute_time()) <
+        to_ms_since_boot(*DisplayTxtEndTime)) {
+      Buff.copyTxtBufferToScreen();
+    } else {
+      DBG_PRINT(std::cout << "DisplayTxtEnd\n";)
+      DisplayTxtEndTime = std::nullopt;
+      if (NoSignal)
+        Buff.noSignal();
+    }
+  }
+}
+
+/// \Returns true if \p Descr is high resolution. This is to tell apart EGA
+/// 640x350 from 640x200.
+bool TTLReader::isHighRes(const TTLDescr &Descr) {
+  // Some users have reported signals with 260 lines tha still need
+  // line-doubling, so we user a higher limit here of 260 instead of 240
+  return Descr.V_Visible - YB > 260;
+}
+
+template <TTL M, bool DiscardLineData>
+bool TTLReader::readLinePerMode(uint32_t Line) {
+  bool InVSync = false;
+  if constexpr (M == TTL::CGA) {
+    InVSync = readLineCGA<DiscardLineData>(Line);
+    AutoAdjust.collect(TTLBorderPio, TTLBorderSM, CGABorderCounter, Line,
+                       TimingsTTL.Mode);
+  } else if constexpr (M == TTL::EGA) {
+    InVSync = readLineCGA<DiscardLineData>(Line);
+    AutoAdjust.collect(TTLBorderPio, TTLBorderSM, EGABorderCounter, Line,
+                       TimingsTTL.Mode);
+  } else if constexpr (M == TTL::MDA) {
+    InVSync = readLineMDA<DiscardLineData>(Line);
+    AutoAdjust.collect(TTLBorderPio, TTLBorderSM, MDABorderCounter, Line,
+                       TimingsTTL.Mode);
+  }
+  else {
+    DBG_PRINT(std::cout << "Bad mode: " << modeToStr(TimingsTTL.Mode) << "\n";)
+    Utils::sleep_ms(1000);
+  }
+  return InVSync;
+}
+
+void TTLReader::calculateVHSyncs(absolute_time_t LastFrameEnd,
+                                 uint32_t VisibleLines) {
+  uint32_t FrameUs = absolute_time_diff_us(LastFrameEnd, FrameEnd);
+  VHz = (float)1000000 / FrameUs;
+
+  uint32_t VisibleUs = absolute_time_diff_us(FrameBegin, FrameEnd);
+  HHz = (float)1000000 * VisibleLines / VisibleUs;
+
+  FrameBegin = FrameEnd;
+}
+
+void TTLReader::setBorders() {
+  switch (TimingsTTL.Mode) {
+  case TTL::CGA:
+  case TTL::EGA:
+    if (isHighRes(TimingsTTL)) {
+      if (EGABorderOpt)
+        AutoAdjust.setBorder(*EGABorderOpt);
+    } else {
+      if (CGABorderOpt)
+        AutoAdjust.setBorder(*CGABorderOpt);
+    }
+    break;
+  case TTL::MDA:
+    if (MDABorderOpt)
+      AutoAdjust.setBorder(*MDABorderOpt);
+    break;
+  }
+}
+
+template <TTL M> void TTLReader::readFrame(uint32_t &Line) {
+  if (DisplayTxtEndTime) {
+    // If we are displaying on-screen text use this code block.
+    bool InVSync = false;
+    do {
+      uint32_t VisibleLine = Line - YBorder;
+      bool DiscardLine = DisplayTxtEndTime &&
+                         VisibleLine >= Buff.getTxtLineYTop() &&
+                         VisibleLine <= Buff.getTxtLineYBot();
+      if (DiscardLine) {
+        InVSync = readLinePerMode<M, /*DiscardLine=*/true>(Line);
+      } else {
+        InVSync = readLinePerMode<M, /*DiscardLine=*/false>(Line);
+      }
+      ++Line;
+    } while (!InVSync);
+  } else {
+    // Not displaying any text, optimized block.
+    bool InVSync = false;
+    do {
+      InVSync = readLinePerMode<M, /*DiscardLine=*/false>(Line);
+      ++Line;
+    } while (!InVSync);
+  }
 }
 
 void TTLReader::runForEver() {
+  Pi.ledON();
   while (true) {
-    absolute_time_t FrameBegin = get_absolute_time();
-    bool VSyncBool = Timing[Buff.getMode()][V_SyncPolarity] == Pos;
-    auto M = Buff.getMode();
+    ++FrameCnt;
+    bool InInfoPage = UsrAction == UserAction::TTLInfo;
+    bool DisableInput = NoSignal || InInfoPage;
     // Wait here if we are in VSync retrace.
-    bool RetraceVSync = Timing[M][V_SyncPolarity] == Pos;
-    while (gpio_get(TTL_VSYNC_GPIO) == RetraceVSync)
+    bool RetraceVSync = TimingsTTL.V_SyncPolarity == Pos;
+    while (!DisableInput && gpio_get(TTL_VSYNC_GPIO) == RetraceVSync)
       ;
+    FrameBegin = get_absolute_time();
     // A fresh frame, start with Line 0
     uint32_t Line = 0;
-    auto Mode = Buff.getMode();
-    while (true) {
-      bool InVSync = false;
-      switch (Mode) {
-      case CGA_640x200_60Hz:
-      case EGA_640x200_60Hz:
-        InVSync = readLineCGA<CGA_640x200_60Hz>(Line);
-        AutoAdjust.collect(TTLBorderPio, TTLBorderSM, EGABorderCounter, Line,
-                           Mode);
-        break;
-      case EGA_640x350_60Hz:
-        InVSync = readLineCGA<EGA_640x350_60Hz>(Line);
-        AutoAdjust.collect(TTLBorderPio, TTLBorderSM, CGABorderCounter, Line,
-                           Mode);
-        break;
-      case MDA_720x350_50Hz:
-        InVSync = readLineMDA(Line);
-        AutoAdjust.collect(TTLBorderPio, TTLBorderSM, MDABorderCounter, Line,
-                           Mode);
-        break;
-      default:
-        DBG_PRINT(std::cout << "Bad mode: " << modeToStr(Buff.getMode())
-                            << "\n";)
-        sleep_ms(1000);
-      }
-      ++Line;
-      DBG_PRINT(MaxY = std::max(MaxY, Line);)
-      if (InVSync)
-        break;
-    }
-    MinY = std::min(MinY, MaxY);
+    if (ManualTTLEnabled)
+      TimingsTTL = ManualTTL;
 
-    bool BordersAdjusted = AutoAdjust.frameTick(Mode);
-    if (BordersAdjusted)
+    if (!DisableInput) {
+      switch (TimingsTTL.Mode) {
+      case TTL::EGA:
+        readFrame<TTL::EGA>(Line);
+        break;
+      case TTL::CGA:
+        readFrame<TTL::CGA>(Line);
+        break;
+      case TTL::MDA:
+        readFrame<TTL::MDA>(Line);
+        break;
+      }
+    }
+
+    if (DisableInput) {
+      if (NoSignal != LastNoSignal)
+        Buff.noSignal();
+      // Simulate a frame delay, since we are not actually receiving TTL data.
+      // This helps with button timings.
+      Utils::sleep_ms(20);
+    }
+    LastNoSignal = NoSignal;
+
+    bool BordersAdjusted = AutoAdjust.frameTick(TimingsTTL);
+    if (BordersAdjusted && !AutoAdjust.isAlwaysON())
       saveToFlash();
 
-    AutoAdjustBtn.tick();
-    PxClkBtn.tick();
+    auto LastFrameEnd = FrameEnd;
+    FrameEnd = get_absolute_time();
 
-    if (AdjPxClkMode == PxClkMode::None)
-      AutoAdjust.tryPushButtonStart();
+    auto Mod = FrameCnt % TTL_MOD;
+    if (!DisableInput && Mod == 1)
+      calculateVHSyncs(LastFrameEnd, Line);
 
-    absolute_time_t FrameEnd = get_absolute_time();
-    int64_t FrameUs = absolute_time_diff_us(FrameBegin, FrameEnd);
-
-    bool Changed = tryChangePixelClock();
-    if (!Changed) {
-      static unsigned Cnt;
-      if (++Cnt % 8 == 0) {
-        bool VSyncPolarity = getVSyncPolarity();
-        if (Buff.checkAndUpdateMode(FrameUs, FrameCnt, VSyncPolarity)) {
-          getDividerAutomatically();
-          switchPio();
-        }
-      }
+    if (!DisableInput) {
+      if (Mod == 2)
+        updateSyncPolarityVariables();
+      else if (Mod == 3)
+        checkAndUpdateMode();
     }
-
     // Try set the border from flash values.
-    switch(Mode) {
-    case CGA_640x200_60Hz:
-    case EGA_640x200_60Hz:
-      if (CGABorderOpt)
-        AutoAdjust.setBorder(*CGABorderOpt);
-      break;
-    case EGA_640x350_60Hz:
-      if (EGABorderOpt)
-        AutoAdjust.setBorder(*EGABorderOpt);
-      break;
-    case MDA_720x350_50Hz:
-      if (MDABorderOpt)
-        AutoAdjust.setBorder(*MDABorderOpt);
-      break;
-    }
+    if (!DisableInput && Mod == 0)
+      setBorders();
 
-    // static uint32_t Cnt;
-    // if (++Cnt % 128 == 0)
-    //   DBG_PRINT(std::cout << " MaxY=" << MaxY << " MaxX=" << MaxX
-    //                       << " Polarity="
-    //                       << (getVSyncPolarity() == Pos ? "Pos" : "Neg")
-    //                       << " Hz=" << DisplayBuffer::getHz(FrameUs) << "\n";)
-
-    // DBG_PRINT(std::cout << std::hex << "VSyncBool=" << VSyncBool << std::dec
-    // //                     << "\n";)
-    // DBG_PRINT(std::cout << "XBorder=" << XBorder << " YBorder=" << YBorder
-    //                     << " RawMin=" << RawMin << " RawMax=" << RawMax
-    //                     << " MinY=" << MinY << " MaxY=" << MaxY << "\n";)
-    DBG_PRINT(MaxX = 0;)
-    DBG_PRINT(MaxY = 0;)
-    MinY = std::numeric_limits<uint32_t>::max();
+    handleButtons();
+    displayTxtTick();
   }
 }

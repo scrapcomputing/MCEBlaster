@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.13)
 # For example: minicom -b 115200 -D /dev/ttyACM0. Serial connection: 115200 8N1
 
 set(REVISION_MAJOR 0)
-set(REVISION_MINOR 1)
+set(REVISION_MINOR 2)
 
 message("PICO_SDK_PATH = ${PICO_SDK_PATH}")
 
@@ -49,7 +49,7 @@ include_directories("${PICO_SDK_PATH}/src/rp2_common/hardware_adc/include")
 include_directories("${PICO_SDK_PATH}/src/rp2_common/pico_multicore/include")
 include_directories("${PROJECT_BINARY_DIR}/") # for build/config.h
 
-set(CMAKE_CXX_FLAGS_RELEASE "-Os")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -Wall -Werror")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Werror ${EXTRA_DBG_FLAGS}")
 
 # rest of your project
@@ -60,7 +60,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 if (NOT DEFINED FULL_FLASH_FREQ)
    message("-> Using reduced flash frequency!")
    pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
-   target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
+   target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=2)
    pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
 endif ()
 
@@ -76,12 +76,14 @@ pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/Pio/MDA720x35
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/Pio/MDA720x350Border.pio)
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/Pio/NoInputSignal.pio)
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/Pio/VSyncPolarity.pio)
+pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/Pio/HSyncPolarity.pio)
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_LIST_DIR}")
 
 set(LIBS
   pico_stdlib
   pico_multicore
+  hardware_dma
   hardware_pio
   )
 target_link_libraries(${PROJECT_NAME} ${LIBS})

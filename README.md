@@ -12,10 +12,11 @@ A simple standalone MCA/CGA/EGA to VGA adapter based on a raspberry pi Pico.
 The Pico reads the TTL input video signal, writes the pixels to a buffer and then generates the VGA signal using the pixels from the buffer.
 
 # Features
-- No need for a VGA upscaler or a 15KHz VGA monitor. Works with standard VGA modes.
+- No need for a VGA up-scaler or a 15KHz VGA monitor. Works with standard VGA modes.
 - Pixel-perfect output:
   - VGA 640x400 for CGA/EGA 320x200,640x200 and 640x350 inputs
   - VGA 800x600 for MDA 720x350
+  - VGA 640x480 for vertical resolutions between 200 and 240
 - Pixel clock tuning for each mode
 - Auto-adjustment functionality that centers the image on screen
 - EGA brown color correction
@@ -32,18 +33,57 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 - Safely eject the mass-storage device
 
 # Usage
+
+*NOTE: Controls have changes since version 0.2!*
+
 ## Adjusting the pixel clock
-- Push the `PIXEL CLOCK` button once, this will enter the pixel adjust mode.
-- Pushing `PIXEL CLOCK` again will increment the pixel clock by 10KHz.
-- Medium-pushing (about 1 second push) `PIXEL CLOCK` will increment by 1KHz
-- Pushing `AUTO ADJUST` will decrement by 10KHz.
-- Medium-pushing (about 1 second push) `AUTO ADJUST` will decrement by 1KHz.
-- Exit pixel clock adjust mode by not pushing any buttons for a few seconds. This won't save the settings to flash.
-- Save settings to flash memory by long-push (keep pushed until you see message) `PIXEL CLOCK`.
+- Push the `PIXEL CLOCK` button once, this will enter the pixel adjust mode. This should show text on screen displaying the current pixel clock.
+- Pushing `PIXEL CLOCK` increments the pixel clock by 10KHz.
+- Pushing `AUTO ADJUST` decrements the pixel clock by 10KHz.
+- Medium-pushing (about half a second push and release) `PIXEL CLOCK` increments by 1KHz
+- Medium-pushing (about half a second push and release) `AUTO ADJUST` decrements by 1KHz.
+- Exit pixel clock adjust mode by not pushing any buttons for 12 seconds. This saves the settings to flash.
 
 ## Centering the image
 - Push the `AUTO ADJUST` button. This works best when the image shown is full from border to border.
 - Long-push the `AUTO ADJUST` button turns on continuous auto-centering mode. This may be useful occasionally, but won't work well if the image is mostly blank as it may keep re-adjusting the image.
+
+## Print TTL Info (since v0.2)
+Long-pressing the PIXEL CLOCK button will show a screen with information about the TTL signal.
+Note: this is not updated in real-time.
+
+You can exit the screen by pushing any button.
+
+## Manually Setting TTL Options (since v0.2)
+By default the MCE Blaster will automatically detect the TTL mode by checking the VSync frequency and the VSync Polarity. If these match the standard MDA/CGA/EGA modes used in PCs this will usually work fine.
+
+But since Version 0.2 the MCE Blaster also supports manually setting:
+1. The mode (MDA/CGA/EGA),
+2. The horizontal and vertical resolution
+3. The horizontal and vertical screen offset (on the TTL side)
+with the help of an on-screen menu.
+
+The operation is straight forward:
+- To enter the menu long-push both buttons for more than a second until the "MANUAL-TTL" menu shows up.
+- The single-line menu consists of 4 items that can be modified. The one that can be currently modified is enclosed in square brackets `[<selected>]`. For example:
+```
+          Currently
+          Selected      Horiz Offset  Vertical Offset
+            vvv               vvv      vvv
+MANUAL-TTL [CGA] 640 x 200 X: AUTO  Y: AUTO
+   ^         ^   ^     ^
+On/Off  TTL-mode Horiz x Vertical Resolution
+```
+the currently selected option is `CGA`.
+- Change the value of the selected item with a short push of the buttons.
+- Cycle through the items by long-pushing the buttons: one will cycle in one direction and the other in the opposite.
+- The options are saved to flash when the user stops pushing buttons for 12 seconds.
+
+## Reset to Factory Defaults (since v0.2)
+Occasionally the user may save to flash some configuration that makes the MCE Blaster unusable or inoperable.
+In this case you can reset to defaults by pressing both buttons while powering on the device.
+Upon a successful reset you will see the LED blinking fast for about 2 seconds.
+You can release the buttons after that and the MCE Blaster will start with the default settings.
 
 # How it works
 ## Overview
@@ -105,12 +145,29 @@ N/A (for Pico) | 2            | 1x20 female through-hole pin-header 2.54mm pitch
 N/A (for Pico) | 2            | 1x20 male through-hole pin-header 2.54mm pitch                         | Headers for the Pico
 
 
+# Build instructions (for developers)
+## Requirements:
+- C++17 cross compiler (see instructions in https://github.com/raspberrypi/pico-sdk)
+- Pico-SDK 1.5.0 (https://github.com/raspberrypi/pico-sdk)
+- cmake 3.13 or later
+
+## Build
+```
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DPICO_FREQ=270000 -DPICO_SDK_PATH=<path-to-pico-sdk> ../src/
+make -j
+```
+
 # Resources:
 - https://minuszerodegrees.net/mda_cga_ega/mda_cga_ega.htm
 - https://en.wikipedia.org/wiki/IBM_Monochrome_Display_Adapter
 - https://en.wikipedia.org/wiki/Enhanced_Graphics_Adapter
 - https://en.wikipedia.org/wiki/Color_Graphics_Adapter
 - https://en.wikipedia.org/wiki/VGA_connector
+
+# Similar Projects
+- Necroware's [mce-adapter](https://github.com/necroware/mce-adapter)
+- [RGBtoHDMI](https://github.com/hoglet67/RGBtoHDMI/wiki)
 
 # Change Log
 - Rev 0.1: Initial release.

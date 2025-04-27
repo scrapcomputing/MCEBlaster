@@ -1,36 +1,57 @@
-;; Copyright (C) 2024 Scrap Computing
+;; Copyright (C) 2024-2025 Scrap Computing
+;
+; We detect the polarity by sampling Sync with a period such that 32 samples
+; take longer than the period of Sync. We pack the 32 1-bit samples into a
+; 32-bit word and push it to the Fifo.
+;
+; The longest Sync period is 20ms (see below) so as long as we have a sampling
+; period larger than 20ms/32 = 625us we should be good
+;
+; At 270MHz each PIO instruction takes ~3.7ns, sampling takes 8 instructions.
+; So we need to slow-down the PIO clock. Using a divider of 21114 corresponds
+; to rougly 3.7ns * 8 * 21114 = 625us.
+;
+;                   VSync
+;                   =====
+; 
+;           20ms      850us
+; MDA:  ~~~~~~~~~~~~~~|__|~~~~~~~~~~~~~~|__|~~~
+;
+;          16.7ms     190us
+; CGA:  ______________|~~|______________|~~|___
+;
+;
+;          16.7ms     190us
+; EGA1: ______________|~~|______________|~~|___
+;
+;          16.7ms     600us
+; EGA2: ~~~~~~~~~~~~~~|__|~~~~~~~~~~~~~~|__|~~~
+;
+;
+;
+;               Source: https://minuszerodegrees.net/mda_cga_ega/mda_cga_ega.htm
+
 
 .program VSyncPolarity
-.define VSYNC_GPIO 6
 
 ; Counts (down) while VSync is low and pushes counter value to FIFO.
 
-entry:
-  pull block                  ; OSR = counter
-  wait 0 gpio VSYNC_GPIO
-
-reset_counter:
-  mov x, osr                  ; X = OSR (= counter)
-
-vsync_low_loop:
-  jmp pin, vsync_high         ; If VSync is High, jmp vsync_high
-  jmp x--, vsync_low_loop     ; X--
-
-vsync_high:
-  wait 0 gpio VSYNC_GPIO
-  in x, 32                    ; ISR = X
-  push noblock
-  jmp reset_counter
+  .wrap_target
+  in pins, 1 [7]                    ; ISR <<= SYNC (1 bit), autopush at 32
+  .wrap ; jmp reset_counter
 
 
 % c-sdk {
 static inline void VSyncPolarityPioConfig(PIO Pio, uint SM, uint Offset, uint VSyncGPIO) {
    pio_sm_config Conf = VSyncPolarity_program_get_default_config(Offset);
    // Shift to the left, auto-push
-   sm_config_set_in_shift(&Conf, /*shift_right=*/false, /*autopush=*/false,
+   sm_config_set_in_shift(&Conf, /*shift_right=*/false, /*autopush=*/true,
                                  /*push_threshold=*/32);
 
-   sm_config_set_jmp_pin(&Conf, VSyncGPIO);
+   sm_config_set_in_pins(&Conf, VSyncGPIO);
+
+   // Clock divider
+   sm_config_set_clkdiv_int_frac(&Conf, /*DivInt=*/21114, /*DivFrac=*/0);
 
    // Initializations
    // Set pin direction
