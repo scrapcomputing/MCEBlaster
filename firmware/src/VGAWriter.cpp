@@ -288,11 +288,15 @@ void VGAWriter::drawFrame4x1() {
   for (uint32_t Line = 0; Line != TimingsVGA[R].V_FrontPorch; ++Line)
     DrawBlackLineWithMask4x1(/*InVSync=*/false);
 
-  // 1. TTL Visible
+  // 1. TTL Visible.
+  // Note: We limit to min(TTL Visible, VGA V_Visble + V_BackPorch) in case the
+  // TTL input signal is slightly taller than VGA visible. This is useful for
+  // some strange inputs that are 260 lines but we would still want to use VGA
+  // 640x480.
   uint32_t Line = 0;
   uint32_t LineTTLE =
       std::min(std::min((LineDoubling ? 2 : 1) * TimingsTTL.V_Visible,
-                        TimingsVGA[R].V_Visible),
+                        TimingsVGA[R].V_Visible + TimingsVGA[R].V_BackPorch),
                (LineDoubling ? 2 : 1) * DisplayBuffer::BuffY);
   for (; Line < LineTTLE; ++Line)
     DrawLineVSyncHigh4x1(Line / (LineDoubling ? 2 : 1));

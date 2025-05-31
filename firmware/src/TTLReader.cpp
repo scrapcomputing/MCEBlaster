@@ -1293,8 +1293,11 @@ void TTLReader::displayTxtTick() {
 /// \Returns true if \p Descr is high resolution. This is to tell apart EGA
 /// 640x350 from 640x200.
 bool TTLReader::isHighRes(const TTLDescr &Descr) {
-  // Some users have reported signals with 260 lines tha still need
-  // line-doubling, so we user a higher limit here of 260 instead of 240
+  // Ideally the limit should be 240, but:
+  // - Some non-standard inputs are 260 lines instead of 240
+  // - and we currently don't support 800x600 for CGA/EGA (not fast enough)
+  // so we go over the limit and still use 640x480 with line doubling for these
+  // modes in order to preserve the aspect ratio.
   return Descr.V_Visible - YB > 260;
 }
 
