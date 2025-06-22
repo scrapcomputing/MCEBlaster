@@ -116,24 +116,22 @@ void VGAWriter::DrawLineVSyncHighMDA8x1(unsigned Line) {
   for (unsigned i = 0; i < TimingsVGA[M].H_FrontPorch; i += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
 
-  // Visible TTL is 720 pixels but VGA is 800 so we need to fill the gap with
-  // black such that the image can get centered proplerly.
-  unsigned TTL_VGA_VisibleGap =
-      TimingsVGA[M].H_Visible - TimingsVGA[M].H_Visible;
-  unsigned LeftBlackForCentering =
-      TTL_VGA_VisibleGap / /* left half: */ 2 / /* pixels per call: */ 8;
-  for (unsigned i = 0; i < LeftBlackForCentering; i += 8)
+  // Visible TTL is 720 pixels but VGA is 800 so we need to pad with black
+  // pixels such that the image can get centered proplerly.
+  unsigned Padding = TimingsVGA[M].H_Visible - TimingsTTL.H_Visible;
+  unsigned LeftPaddingForCentering = Padding / /* left half: */ 2;
+  for (unsigned i = 0; i < LeftPaddingForCentering; i += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
 
   // The visible part of the line.
-  for (unsigned X = 0, E = TimingsVGA[M].H_Visible; X < E; X += 8) {
+  for (unsigned X = 0, E = TimingsTTL.H_Visible; X < E; X += 8) {
     uint32_t Pixels8_HV = Buff.getMDA32(Line, X) | HVMaskMDA_8;
     pio_sm_put_blocking(VGAPio, VGASM, Pixels8_HV);
   }
 
   // Fill the right hand side Visible TTL-VGA gap with black pixels.
-  unsigned RightBlackForCentering = TTL_VGA_VisibleGap - LeftBlackForCentering;
-  for (unsigned i = 0; i < RightBlackForCentering; i += 8)
+  unsigned RightPaddingForCentering = Padding - LeftPaddingForCentering;
+  for (unsigned i = 0, E = RightPaddingForCentering; i < E; i += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
 
   // Right Border is black

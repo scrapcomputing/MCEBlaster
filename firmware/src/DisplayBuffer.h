@@ -67,8 +67,8 @@ public:
   void displayChar(char C, int X, int Y, uint8_t Buff[][BuffX],
                    uint32_t FgColor, uint32_t BgColor, int ZoomXLevel = 1,
                    int ZoomYLevel = 1);
-  /// Writes Txt to TxtBuffer.
-  void displayTxt(const std::string &Txt, int X, bool Center = false);
+  /// Writes Line to TxtBuffer.
+  void displayTxt(const std::string &Line, int X, bool Center = false);
   /// Write a text page to the dipslay buffer (not TxtBuffer).
   void displayPage(const std::string &PageTxt, bool Center = true);
   /// Copy TxtBuffer to Buffer, i.e. show text on screen.

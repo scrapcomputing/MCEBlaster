@@ -93,7 +93,7 @@ void TTLDescr::dump(std::ostream &OS) const {
      << " H:" << H_Hz << polarityToStr(H_SyncPolarity) << " PxClk:" << PxClk;
 }
 
-void TTLDescr::dumpFull(std::ostream &OS) const {
+void TTLDescr::dumpFull(std::ostream &OS, uint32_t SamplingOffset) const {
   char PxClkStr[10];
   snprintf(PxClkStr, 10, "%-2.3f", (float)PxClk / 1000000);
   char V_Hz_Str[10];
@@ -106,7 +106,7 @@ void TTLDescr::dumpFull(std::ostream &OS) const {
      << " Hz  POLARITY: " << polarityToStr(V_SyncPolarity) << "\n";
   OS << "HORIZONTAL SYNC: " << H_KHz_Str
      << " KHz POLARITY: " << polarityToStr(H_SyncPolarity) << "\n";
-  OS << "PIXEL CLOCK: " << PxClkStr << "MHz\n";
+  OS << "PIXEL CLOCK: " << PxClkStr << "MHz SAMPLING OFFSET: " << SamplingOffset << "\n";
   OS << "HORIZONTAL VISIBLE:     " << H_Visible - XB << "\n";
   OS << "HORIZONTAL FRONT PORCH: " << H_FrontPorch << "\n";
   // OS << "HORIZONTAL BACK PORCH:  " << H_BackPorch << "\n";

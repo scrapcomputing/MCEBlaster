@@ -19,28 +19,25 @@ static inline void EGA640x350PioConfig(PIO Pio, uint SM, uint Offset,
                                        uint RGB_GPIO, uint32_t HSYNC_GPIO,
                                        uint16_t ClkDivInt, uint8_t ClkDivFrac,
                                        uint32_t InstrDelay,
+                                       uint32_t SamplingOffset,
                                        Polarity HSyncPolarity) {
-  auto GetInstrDelay = [Offset](uint32_t InstrDelay, Polarity HSyncPolarity) {
+  auto GetSmConfig = [Offset](uint32_t InstrDelay, uint32_t SamplingOffset,
+                              Polarity HSyncPolarity) {
     switch (HSyncPolarity) {
     case Polarity::Pos: {
-      switch (InstrDelay) {
-        // case 7:
-        // return EGA640x350_07_program_get_default_config(Offset);
 #include "EGASwitchCase_PosHSync_config_cpp"
-        break;
-      }
+      break;
     }
     case Polarity::Neg: {
-      switch (InstrDelay) {
 #include "EGASwitchCase_NegHSync_config_cpp"
-        break;
-      }
+      break;
     }
     }
-    std::cerr << "Bad InstrDelay EGA: GetInstrDelay(" << InstrDelay << ")\n";
+    std::cerr << "Bad InstrDelay or SamplingOffset in EGA: GetSmConfig("
+              << InstrDelay << ", " << SamplingOffset << ")\n";
     exit(1);
   };
-  pio_sm_config Conf = GetInstrDelay(InstrDelay, HSyncPolarity);
+  pio_sm_config Conf = GetSmConfig(InstrDelay, SamplingOffset, HSyncPolarity);
 
   // in pins: RGB
   sm_config_set_in_pins(&Conf, RGB_GPIO);
@@ -63,28 +60,25 @@ static inline void EGA640x350PioConfig(PIO Pio, uint SM, uint Offset,
 static inline void CGA640x200PioConfig(PIO Pio, uint SM, uint Offset,
                                        uint RGB_GPIO, uint32_t HSYNC_GPIO,
                                        uint16_t ClkDivInt, uint8_t ClkDivFrac,
-                                       uint32_t InstrDelay, Polarity HSyncPolarity) {
-  auto GetInstrDelay = [Offset](uint32_t InstrDelay, Polarity HSyncPolarity) {
+                                       uint32_t InstrDelay,
+                                       uint32_t SamplingOffset,
+                                       Polarity HSyncPolarity) {
+  auto GetSmConfig = [Offset](uint32_t InstrDelay, uint32_t SamplingOffset,
+                              Polarity HSyncPolarity) {
     switch (HSyncPolarity) {
     case Polarity::Pos: {
-      switch (InstrDelay) {
-        // case 9:
-        // return CGA640x200_09_program_get_default_config(Offset);
 #include "CGASwitchCase_PosHSync_config_cpp"
-        break;
-      }
+      break;
     }
     case Polarity::Neg: {
-      switch (InstrDelay) {
 #include "CGASwitchCase_NegHSync_config_cpp"
-        break;
-      }
     }
     }
-    std::cerr << "Bad InstrDelay CGA: GetInstrDelay(" << InstrDelay << ")\n";
+    std::cerr << "Bad InstrDelay or SamplingOffset in CGA: GetSmConfig("
+              << InstrDelay << ", " << SamplingOffset << ")\n";
     exit(1);
   };
-  pio_sm_config Conf = GetInstrDelay(InstrDelay, HSyncPolarity);
+  pio_sm_config Conf = GetSmConfig(InstrDelay, SamplingOffset, HSyncPolarity);
   // in pins: RGB
   sm_config_set_in_pins(&Conf, RGB_GPIO);
   // Shift to the right, no auto-push
@@ -115,26 +109,24 @@ static inline void MDA720x350PioConfig(PIO Pio, uint SM, uint Offset,
                                        uint MDA_GPIO, uint HSYNC_GPIO,
                                        uint16_t ClkDivInt, uint8_t ClkDivFrac,
                                        uint32_t InstrDelay,
+                                       uint32_t SamplingOffset,
                                        Polarity HSyncPolarity) {
-  auto GetInstrDelay = [Offset](uint32_t InstrDelay, Polarity HSyncPolarity) {
+  auto GetSmConfig = [Offset](uint32_t InstrDelay, uint32_t SamplingOffset, Polarity HSyncPolarity) {
     switch (HSyncPolarity) {
     case Polarity::Pos: {
-      switch (InstrDelay) {
 #include "MDASwitchCase_PosHSync_config_cpp"
-        break;
-      }
+      break;
     }
     case Polarity::Neg: {
-      switch (InstrDelay) {
 #include "MDASwitchCase_NegHSync_config_cpp"
-        break;
-      }
+      break;
     }
     }
-    std::cerr << "GetInstrDelay MDA Bad InstrDelay " << InstrDelay << "\n";
+    std::cerr << "Bad InstrDelay or SamplingOffset in MDA: GetSmConfig("
+              << InstrDelay << ", " << SamplingOffset << ")\n";
     exit(1);
   };
-  pio_sm_config Conf = GetInstrDelay(InstrDelay, HSyncPolarity);
+  pio_sm_config Conf = GetSmConfig(InstrDelay, SamplingOffset, HSyncPolarity);
   // in pins: VI (Video, Intensity)
   sm_config_set_in_pins(&Conf, MDA_GPIO);
   // Shift to the right, no auto-push
@@ -283,12 +275,29 @@ uint32_t &TTLReader::getPxClkFor(const TTLDescr &Descr) {
   }
 }
 
+uint32_t &TTLReader::getSamplingOffsetFor(const TTLDescr &Descr) {
+  switch (Descr.Mode) {
+  case TTL::CGA:
+    return CGASamplingOffset;
+  case TTL::EGA:
+    return EGASamplingOffset;
+  case TTL::MDA:
+    return MDASamplingOffset;
+  default:
+    std::cerr << __FUNCTION__ << " BAD Mode " << modeToStr(Descr.Mode) << "\n";
+    exit(1);
+  }
+}
+
 void TTLReader::displayPxClk() {
-  uint32_t &PixelClock = getPxClkFor(TimingsTTL);
-  static constexpr const int BuffSz = 36;
-  char Txt[BuffSz];
-  snprintf(Txt, BuffSz, "PxCLK:%2.3fMHz  (%s %lux%lu)",
-           (float)PixelClock / 1000000, modeToStr(TimingsTTL.Mode),
+  const uint32_t &PixelClock = getPxClkFor(TimingsTTL);
+  const uint32_t &SamplingOffset = getSamplingOffsetFor(TimingsTTL);
+  static constexpr const int BuffSz = 64;
+  static char Txt[BuffSz];
+  snprintf(Txt, BuffSz, "PxCLK:%2.3fMHz  SAMPLING OFFSET:%lu  (%s %lux%lu)",
+           (float)PixelClock / 1000000,
+           SamplingOffset,
+           modeToStr(TimingsTTL.Mode),
            TimingsTTL.H_Visible -
                /*XB is an implementation detail, hide it from user*/ XB,
            TimingsTTL.V_Visible - YB);
@@ -298,14 +307,30 @@ void TTLReader::displayPxClk() {
 void TTLReader::changePxClk(bool Increase, bool SmallStep) {
   /// \Returns the ClkDiv for the current mode.
   uint32_t &PixelClock = getPxClkFor(TimingsTTL);
+  uint32_t &SamplingOffset = getSamplingOffsetFor(TimingsTTL);
   DBG_PRINT(std::cout << "\n-----------\n";)
   DBG_PRINT(std::cout << "Pixel Clock Before=" << PixelClock;)
+  // WARNING: This should match the sampling offsets in the PIO files!!!
+  static constexpr const uint32_t SamplingOffsetMod = 5;
   if (Increase) {
     DBG_PRINT(std::cout << " ++ ";)
-    PixelClock += SmallStep ? 1000 : 10000;
+    if (SmallStep) {
+      SamplingOffset = (SamplingOffset + 1) % SamplingOffsetMod;
+      if (SamplingOffset % 5 == 0)
+        PixelClock += 1000;
+    } else {
+      PixelClock += 10000;
+    }
   } else {
     DBG_PRINT(std::cout << " -- ";)
-    PixelClock -= SmallStep ? 1000 : 10000;
+    if (SmallStep) {
+      SamplingOffset =
+          SamplingOffset == 0 ? (SamplingOffsetMod - 1) : SamplingOffset - 1;
+      if (SamplingOffset % SamplingOffsetMod == 0)
+        PixelClock -= 1000;
+    } else {
+      PixelClock -= 10000;
+    }
   }
   DBG_PRINT(std::cout << "After=" << PixelClock << "\n";)
   DBG_PRINT(std::cout << "-----------\n\n";)
@@ -413,11 +438,9 @@ TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
       ManualTTL.V_Visible = (uint32_t)Flash.read(ManualTTL_V_VisibleIdx);
       if (ManualTTLEnabled) {
         XBorderAUTO = (uint32_t)Flash.read(XBorderAUTOIdx);
-        ManualTTL.H_FrontPorch =
-            (uint32_t)Flash.read(ManualTTL_H_FrontPorchIdx);
+        ManualTTL.H_FrontPorch = (int)Flash.read(ManualTTL_H_FrontPorchIdx);
         YBorderAUTO = (uint32_t)Flash.read(YBorderAUTOIdx);
-        ManualTTL.V_FrontPorch =
-            (uint32_t)Flash.read(ManualTTL_V_FrontPorchIdx);
+        ManualTTL.V_FrontPorch = (int)Flash.read(ManualTTL_V_FrontPorchIdx);
       }
 
       auto ReadBorderSafe = [this, &Flash](int Idx) -> std::optional<BorderXY> {
@@ -567,60 +590,52 @@ template <bool DiscardData> bool TTLReader::readLineMDA(uint32_t Line) {
   return InRetrace;
 }
 
-static auto getEGAProgram(uint32_t IPP, Polarity HSync) {
+static auto getEGAProgram(uint32_t InstrDelay, uint32_t SamplingOffset, Polarity HSync) {
   switch (HSync) {
   case Polarity::Pos: {
-    switch (IPP) {
 #include "EGASwitchCase_PosHSync_program_cpp"
-    }
     break;
   }
   case Polarity::Neg: {
-    switch (IPP) {
 #include "EGASwitchCase_NegHSync_program_cpp"
-    }
     break;
   }
   }
-  std::cerr << "Bad IPP getEGAProgram(" << IPP << ")\n";
+  std::cerr << "Bad InstrDelay or SamplingOffset in  getEGAProgram("
+            << InstrDelay << "," << SamplingOffset << ")\n";
   exit(1);
 }
 
-static auto getCGAProgram(uint32_t IPP, Polarity HSync) {
+static auto getCGAProgram(uint32_t InstrDelay, uint32_t SamplingOffset,
+                          Polarity HSync) {
   switch (HSync) {
   case Polarity::Pos: {
-    switch (IPP) {
 #include "CGASwitchCase_PosHSync_program_cpp"
     break;
-    }
   }
   case Polarity::Neg: {
-    switch (IPP) {
 #include "CGASwitchCase_NegHSync_program_cpp"
-    }
     break;
   }
   }
-  std::cerr << "Bad IPP getCGAProgram(" << IPP << ")\n";
+  std::cerr << "Bad InstrDelay or SamplingOffset in getCGAProgram("
+            << InstrDelay << ", " << SamplingOffset << ")\n";
   exit(1);
 }
 
-static auto getMDAProgram(uint32_t IPP, Polarity HSync) {
+static auto getMDAProgram(uint32_t InstrDelay, uint32_t SamplingOffset, Polarity HSync) {
   switch (HSync) {
   case Polarity::Pos: {
-    switch (IPP) {
 #include "MDASwitchCase_PosHSync_program_cpp"
-    }
     break;
   }
   case Polarity::Neg: {
-    switch (IPP) {
 #include "MDASwitchCase_NegHSync_program_cpp"
-    }
     break;
   }
   }
-  std::cerr << "Bad IPP getMDAProgram(" << IPP << ")\n";
+  std::cerr << "Bad InstrDelay or SamplingOffset in getMDAProgram("
+            << InstrDelay << ", " << SamplingOffset << ")\n";
   exit(1);
 }
 
@@ -663,11 +678,11 @@ void TTLReader::switchPio() {
   switch (TimingsTTL.Mode) {
   case TTL::MDA: {
     TTLOffset = PioLoader.loadPIOProgram(
-        TTLPio, TTLSM, getMDAProgram(MDAIPP, HSyncPolarity),
+        TTLPio, TTLSM, getMDAProgram(MDAIPP, MDASamplingOffset, HSyncPolarity),
         [this](PIO Pio, uint SM, uint Offset) {
           MDA720x350PioConfig(Pio, SM, Offset, MDA_VI_GPIO, TTL_HSYNC_GPIO,
                               MDAClkDiv.getInt(), MDAClkDiv.getFrac(), MDAIPP,
-                              HSyncPolarity);
+                              MDASamplingOffset, HSyncPolarity);
         });
 
     TTLBorderOffset = PioLoader.loadPIOProgram(
@@ -684,11 +699,12 @@ void TTLReader::switchPio() {
   case TTL::EGA: {
     if (isHighRes(TimingsTTL)) {
       TTLOffset = PioLoader.loadPIOProgram(
-          TTLPio, TTLSM, getEGAProgram(EGAIPP, HSyncPolarity),
+          TTLPio, TTLSM,
+          getEGAProgram(EGAIPP, EGASamplingOffset, HSyncPolarity),
           [this](PIO Pio, uint SM, uint Offset) {
             EGA640x350PioConfig(Pio, SM, Offset, EGA_RGB_GPIO, TTL_HSYNC_GPIO,
                                 EGAClkDiv.getInt(), EGAClkDiv.getFrac(), EGAIPP,
-                                HSyncPolarity);
+                                EGASamplingOffset, HSyncPolarity);
           });
 
       TTLBorderOffset = PioLoader.loadPIOProgram(
@@ -702,11 +718,13 @@ void TTLReader::switchPio() {
 
     } else {
       TTLOffset = PioLoader.loadPIOProgram(
-          TTLPio, TTLSM, getCGAProgram(CGAIPP, HSyncPolarity),
+          TTLPio, TTLSM,
+          getCGAProgram(CGAIPP, CGASamplingOffset, HSyncPolarity),
           [this](PIO Pio, uint SM, uint Offset) {
             CGA640x200PioConfig(Pio, SM, Offset, CGA_ACTUAL_RGB_GPIO,
                                 TTL_HSYNC_GPIO, CGAClkDiv.getInt(),
-                                CGAClkDiv.getFrac(), CGAIPP, HSyncPolarity);
+                                CGAClkDiv.getFrac(), CGAIPP, CGASamplingOffset,
+                                HSyncPolarity);
           });
 
       TTLBorderOffset = PioLoader.loadPIOProgram(
@@ -830,8 +848,11 @@ void TTLReader::saveToFlash() {
   std::vector<int> FlashValues;
   FlashValues.resize((int)MaxFlashIdx);
   FlashValues[CGAPxClkIdx] = CGAPxClk;
+  FlashValues[CGASamplingOffsetIdx] = CGASamplingOffset;
   FlashValues[EGAPxClkIdx] = EGAPxClk;
+  FlashValues[EGASamplingOffsetIdx] = EGASamplingOffset;
   FlashValues[MDAPxClkIdx] = MDAPxClk;
+  FlashValues[MDASamplingOffsetIdx] = MDASamplingOffset;
   FlashValues[CGABorderIdx] =
       CGABorderOpt ? CGABorderOpt->getUint32() : InvalidBorder;
   FlashValues[EGABorderIdx] =
@@ -1059,9 +1080,8 @@ bool TTLReader::manualTTLMode() {
       case ManualTTLMenu_XBorder_ItemIdx: {
         // XBorder
         auto PrevXBorder =
-            ManualTTL.H_FrontPorch < MANUAL_TTL_XBORDER_STEP
-                ? 0lu
-                : ManualTTL.H_FrontPorch - MANUAL_TTL_XBORDER_STEP;
+            std::max(-MANUAL_TTL_MAX_XBORDER,
+                     ManualTTL.H_FrontPorch - MANUAL_TTL_XBORDER_STEP);
         ManualTTL.H_FrontPorch = PrevXBorder;
         break;
       }
@@ -1073,9 +1093,8 @@ bool TTLReader::manualTTLMode() {
       case ManualTTLMenu_YBorder_ItemIdx: {
         // YBorder
         auto PrevYBorder =
-            ManualTTL.V_FrontPorch < MANUAL_TTL_YBORDER_STEP
-                ? 0lu
-                : ManualTTL.V_FrontPorch - MANUAL_TTL_YBORDER_STEP;
+            std::max(-MANUAL_TTL_MAX_YBORDER,
+                     ManualTTL.V_FrontPorch - MANUAL_TTL_YBORDER_STEP);
         ManualTTL.V_FrontPorch = PrevYBorder;
         break;
       }
@@ -1143,10 +1162,11 @@ void TTLReader::checkAndUpdateMode() {
 
 void TTLReader::displayTTLInfo() {
   TimingsTTL.PxClk = getPxClkFor(TimingsTTL);
+  auto SamplingOffset = getSamplingOffsetFor(TimingsTTL);
   std::stringstream SS;
   SS << "TTL INFO\n";
   SS << "--------\n";
-  TimingsTTL.dumpFull(SS);
+  TimingsTTL.dumpFull(SS, SamplingOffset);
   Buff.displayPage(SS.str());
 }
 

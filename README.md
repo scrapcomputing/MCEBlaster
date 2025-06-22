@@ -38,11 +38,27 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 
 ## Adjusting the pixel clock
 - Push the `PIXEL CLOCK` button once, this will enter the pixel adjust mode. This should show text on screen displaying the current pixel clock.
-- Pushing `PIXEL CLOCK` increments the pixel clock by 10KHz.
-- Pushing `AUTO ADJUST` decrements the pixel clock by 10KHz.
-- Medium-pushing (about half a second push and release) `PIXEL CLOCK` increments by 1KHz
-- Medium-pushing (about half a second push and release) `AUTO ADJUST` decrements by 1KHz.
+- Coarse adjustment:
+  - Push `PIXEL CLOCK` to increment the pixel clock by 10KHz.
+  - Push `AUTO ADJUST` to decrement the pixel clock by 10KHz.
+- Fine adjustment:
+  - Medium-push (about half a second push and release) `PIXEL CLOCK` to increment the sampling offset and then increment the pixel clock by 1KHz once we have tried all offsets.
+  - Medium-push (about half a second push and release) `AUTO ADJUST` to decrement the sampling offset and then decrement the pixel clock by 1KHz once we have tried all offsets.
 - Exit pixel clock adjust mode by not pushing any buttons for 12 seconds. This saves the settings to flash.
+
+### Sampling Offset (since rev 0.3)
+The sampling offset is a fine-tuning knob added in rev 0.3 that shifts TTL sampling to try to avoid sampling the pixels during the transitions (shown as `X`).
+In this example, using a sampling offset of 1 will result in a very noisy image because sampling takes place during the pixel transitions.
+
+```
+                    _____ _____ _____ _____
+TTL Pixels:        X_____X_____X_____X_____X
+Sampling offset 0:      |     |     |     |
+Sampling offset 1:       |     |     |     |
+Sampling offset 2:        |     |     |     |
+Sampling offset 3:         |     |     |     |
+
+```
 
 ## Centering the image
 - Push the `AUTO ADJUST` button. This works best when the image shown is full from border to border.
@@ -171,6 +187,8 @@ make -j
 
 # Change Log
 - Rev 0.1: Initial release.
+- Rev 0.2: Major redesign. Manual TTL, menus show live background
+- Rev 0.3: Better adjustment of pixel clock with sampling offset
 
 # License
 The project is GPLv2.
