@@ -45,11 +45,10 @@ static constexpr const uint32_t MANUAL_TTL_HORIZ_STEP = 1;
 static constexpr const uint32_t MANUAL_TTL_VERT_STEP = 1;
 static constexpr const uint32_t MANUAL_TTL_HORIZ_MIN = 100;
 static constexpr const uint32_t MANUAL_TTL_VERT_MIN = 100;
-static constexpr const uint32_t MANUAL_TTL_XBORDER_STEP = 4;
-static constexpr const uint32_t MANUAL_TTL_YBORDER_STEP = 1;
-static constexpr const uint32_t MANUAL_TTL_MAX_XBORDER = 400;
-static constexpr const uint32_t MANUAL_TTL_MAX_YBORDER = 200;
-
+static constexpr const int MANUAL_TTL_XBORDER_STEP = 4;
+static constexpr const int MANUAL_TTL_YBORDER_STEP = 1;
+static constexpr const int MANUAL_TTL_MAX_XBORDER = 400;
+static constexpr const int MANUAL_TTL_MAX_YBORDER = 200;
 
 static constexpr const uint32_t NO_TTL_SIGNAL_MS = 800;
 static constexpr const uint32_t UNKNOWN_MODE_MS = 2000;

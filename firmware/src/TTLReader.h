@@ -142,8 +142,11 @@ private:
   // Flash entries
   enum {
     CGAPxClkIdx = 0,
+    CGASamplingOffsetIdx,
     EGAPxClkIdx,
+    EGASamplingOffsetIdx,
     MDAPxClkIdx,
+    MDASamplingOffsetIdx,
     CGABorderIdx,
     EGABorderIdx,
     MDABorderIdx,
@@ -163,11 +166,16 @@ private:
   uint32_t EGAPxClk = PresetTimingsTTL[EGA_640x350_60Hz].PxClk;
   uint32_t MDAPxClk = PresetTimingsTTL[MDA_720x350_50Hz].PxClk;
 
+  uint32_t CGASamplingOffset = 0;
+  uint32_t EGASamplingOffset = 0;
+  uint32_t MDASamplingOffset = 0;
+
   std::optional<BorderXY> CGABorderOpt;
   std::optional<BorderXY> EGABorderOpt;
   std::optional<BorderXY> MDABorderOpt;
 
   uint32_t &getPxClkFor(const TTLDescr &Descr);
+  uint32_t &getSamplingOffsetFor(const TTLDescr &Descr);
   void displayPxClk();
   /// Increments the clock divider that corresponds to the current mode.
   void changePxClk(bool Increase, bool SmallStep);

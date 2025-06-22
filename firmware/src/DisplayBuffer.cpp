@@ -198,24 +198,17 @@ void DisplayBuffer::displayPage(const std::string &PageTxt, bool Center) {
   DBG_PRINT(std::cout << __FUNCTION__ << "----END----\n";)
 }
 
-void DisplayBuffer::displayTxt(const std::string &TxtOrig, int X, bool Center) {
-  static constexpr const int Zoom = 1;
-  DBG_PRINT(std::cout << "displayTxt(" << TxtOrig << ")\n";)
+void DisplayBuffer::displayTxt(const std::string &Line, int X, bool Center) {
+  DBG_PRINT(std::cout << "displayTxt(" << Line << ")\n";)
   clearTxtBuffer();
 
-  // Add NL, makes it easier to process.
-  std::string Line = TxtOrig;
-  bool YDoublingMode = !TTLReader::isHighRes(*TimingsTTL);
-  int ZoomXLevel = Zoom;
-  int ZoomYLevel = Zoom;
-  if (Zoom > 1)
-    ZoomYLevel = std::max(1, YDoublingMode ? Zoom >> 1 : Zoom);
-  else
-    ZoomXLevel = std::max(1, Zoom);
+  static constexpr const int ZoomXLevel = 1;
+  static constexpr const int ZoomYLevel = 1;
 
-  int ActualX = Center ? TimingsTTL->H_Visible / 2 -
-                             Line.size() * BMapWidth * ZoomXLevel / 2
-                       : X;
+  int ActualX =
+      Center
+          ? (TimingsTTL->H_Visible - Line.size() * BMapWidth * ZoomXLevel) / 2
+          : X;
   int ActualY = 0;
   DBG_PRINT(std::cout << "displayTxt:>>" << Line << "<< (X=" << ActualX
                       << ",Y=" << ActualY << ")\n";)
@@ -224,7 +217,7 @@ void DisplayBuffer::displayTxt(const std::string &TxtOrig, int X, bool Center) {
   for (char C : Line) {
     displayChar(C, ActualX, ActualY, TxtBuffer, FgColor, BgColor, ZoomXLevel,
                 ZoomYLevel);
-    ActualX += BMapWidth * Zoom;
+    ActualX += BMapWidth * ZoomXLevel;
   }
 }
 

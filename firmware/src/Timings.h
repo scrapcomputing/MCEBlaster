@@ -132,7 +132,7 @@ struct TTLDescr {
   }
   bool operator!=(const TTLDescr &Other) const { return !(*this == Other); }
   void dump(std::ostream &OS) const;
-  void dumpFull(std::ostream &OS) const;
+  void dumpFull(std::ostream &OS, uint32_t SamplingOffset) const;
   friend std::ostream &operator<<(std::ostream &OS, const TTLDescr &R) {
     R.dump(OS);
     return OS;
@@ -142,9 +142,9 @@ struct TTLDescr {
 /// This is used for storing the ManualTTL settings.
 struct TTLDescrReduced {
   TTL Mode = TTL::CGA;
-  uint32_t H_FrontPorch = 0;
+  int H_FrontPorch = 0;
   uint32_t H_Visible = 0;
-  uint32_t V_FrontPorch = 0;
+  int V_FrontPorch = 0;
   uint32_t V_Visible = 0;
   TTLDescrReduced &operator=(const TTLDescr &Other);
   void dump(std::ostream &OS) const;
