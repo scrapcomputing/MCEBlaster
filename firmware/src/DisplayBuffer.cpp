@@ -63,6 +63,7 @@ DisplayBuffer::DisplayBuffer() : SplashXPM(splash) {
 
   // The DMA is used for copying txt to screen.
   DMAChannel = dma_claim_unused_channel(true);
+  DMAChannel2 = dma_claim_unused_channel(true);
 }
 
 void DisplayBuffer::clear() {
@@ -225,12 +226,30 @@ void DisplayBuffer::copyTxtBufferToScreen() {
   if (dma_channel_is_busy(DMAChannel))
     return;                     // Not sure it's needed
   dma_channel_config DMAConfig = dma_channel_get_default_config(DMAChannel);
-  channel_config_set_transfer_data_size(&DMAConfig, DMA_SIZE_8);
+  channel_config_set_transfer_data_size(&DMAConfig, DMA_SIZE_32);
   channel_config_set_read_increment(&DMAConfig, true);
   channel_config_set_write_increment(&DMAConfig, true);
   dma_channel_configure(DMAChannel, &DMAConfig,
                         /*Dst=*/&Buffer[getTxtLineYTop()][0],
                         /*Src=*/TxtBuffer,
-                        /*Transfers=*/TxtBuffX * TxtBuffY,
+                        /*Transfers=*/TxtBuffX * TxtBuffY / /*DMA_SIZE_32*/ 4,
+                        true /*Start immediately*/);
+}
+
+void DisplayBuffer::fillBottomWithBlackAfter(uint32_t Line) {
+  if (Line >= BuffY)
+    return;
+  if (dma_channel_is_busy(DMAChannel2))
+    return;                     // Not sure it's needed
+
+  dma_channel_config DMAConfig = dma_channel_get_default_config(DMAChannel2);
+  channel_config_set_transfer_data_size(&DMAConfig, DMA_SIZE_32);
+  channel_config_set_read_increment(&DMAConfig, false);
+  channel_config_set_write_increment(&DMAConfig, true);
+  auto Transfers = (BuffY - Line) * BuffX / /*DMA_SIZE_32*/ 4;
+  dma_channel_configure(DMAChannel2, &DMAConfig,
+                        /*Dst=*/&Buffer[Line][0],
+                        /*Src=*/&Black,
+                        /*Transfers=*/Transfers,
                         true /*Start immediately*/);
 }

@@ -20,6 +20,8 @@ class DisplayBuffer {
   friend class XPM2;
   // The DMA used for copying text from TxtBuffer to Buffer.
   int DMAChannel;
+  // The DMA used for filling in the frame buffer border with black.
+  int DMAChannel2;
 
   std::unordered_map<char, const uint8_t *> CharMap;
 
@@ -114,6 +116,8 @@ public:
 
   /// We only need to call this once.
   void setMode(const TTLDescr &NewMode) { TimingsTTL = &NewMode; }
+  /// Fi
+  void fillBottomWithBlackAfter(uint32_t Line);
 };
 
 #endif // __BUFFER_H__

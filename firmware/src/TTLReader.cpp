@@ -410,6 +410,7 @@ TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
       HSyncPolaritySM(HSyncPolaritySM), ResetToDefaults(ResetToDefaults),
       Buff(Buff), ManualTTLMenu(*this) {
   DBG_PRINT(std::cout << "\n\n\n\n\nTTLReader constructor start\n";)
+
   XBorder = 0;
   YBorder = 0;
   VHz = 0;
@@ -1401,6 +1402,9 @@ template <TTL M> void TTLReader::readFrame(uint32_t &Line) {
       InVSync = readLinePerMode<M, /*DiscardLine=*/false>(Line);
       ++Line;
     } while (!InVSync);
+    // Fill the bottom of the frame buffer with black pixels to remove
+    // out-of-border artifacts that may show up when closing programs.
+    Buff.fillBottomWithBlackAfter(Line);
   }
 }
 
