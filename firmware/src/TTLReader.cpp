@@ -171,6 +171,10 @@ void AutoAdjustBorder::applyBorders(const TTLDescr &TimingsTTL) {
       CGABorderOpt = BorderXY(XBorder, YBorder);
     break;
   case TTL::MDA:
+    // We have enough frame-buffer size to not have to worry about the beginning
+    // of the visible pixels (due to 2-pixels per byte scheme) so just use an
+    // XBorder of 0.
+    XBorder = 0;
     MDABorderOpt = BorderXY(XBorder, YBorder);
     break;
   }
