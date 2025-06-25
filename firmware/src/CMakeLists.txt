@@ -60,7 +60,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 if (NOT DEFINED FULL_FLASH_FREQ)
    message("-> Using reduced flash frequency!")
    pico_define_boot_stage2(slower_boot2 ${PICO_DEFAULT_BOOT_STAGE2_FILE})
-   target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=2)
+   target_compile_definitions(slower_boot2 PRIVATE PICO_FLASH_SPI_CLKDIV=4)
    pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
 endif ()
 

@@ -496,7 +496,8 @@ TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
   DBG_PRINT(std::cout << "TTLReader constructor end\n";)
 }
 
-template <bool DiscardData> bool TTLReader::readLineCGA(uint32_t Line) {
+template <bool DiscardData>
+bool __not_in_flash_func(TTLReader::readLineCGA)(uint32_t Line) {
   // Now fill in the line until HSync is high.
   uint32_t X = 0;
 
@@ -547,7 +548,8 @@ template <bool DiscardData> bool TTLReader::readLineCGA(uint32_t Line) {
   return InRetrace;
 }
 
-template <bool DiscardData> bool TTLReader::readLineMDA(uint32_t Line) {
+template <bool DiscardData>
+bool __not_in_flash_func(TTLReader::readLineMDA)(uint32_t Line) {
   // Now fill in the line until HSync is high.
   uint32_t PixelX = 0;
   uint32_t BuffX = 0;
@@ -1327,7 +1329,7 @@ bool TTLReader::isHighRes(const TTLDescr &Descr) {
 }
 
 template <TTL M, bool DiscardLineData>
-bool TTLReader::readLinePerMode(uint32_t Line) {
+bool __not_in_flash_func(TTLReader::readLinePerMode)(uint32_t Line) {
   bool InVSync = false;
   if constexpr (M == TTL::CGA) {
     InVSync = readLineCGA<DiscardLineData>(Line);
@@ -1379,7 +1381,8 @@ void TTLReader::setBorders() {
   }
 }
 
-template <TTL M> void TTLReader::readFrame(uint32_t &Line) {
+template <TTL M>
+void __not_in_flash_func(TTLReader::readFrame)(uint32_t &Line) {
   if (DisplayTxtEndTime) {
     // If we are displaying on-screen text use this code block.
     bool InVSync = false;

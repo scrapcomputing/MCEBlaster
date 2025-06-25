@@ -26,7 +26,7 @@ static int VSyncPolaritySM_ = 0;
 static PIO HSyncPolarityPio_ = 0;
 static int HSyncPolaritySM_ = 0;
 
-void VGAWriter::DrawBlackLineWithMask4x1(bool InVertSync) {
+void __not_in_flash_func(VGAWriter::DrawBlackLineWithMask4x1)(bool InVertSync) {
   static constexpr auto M = VGA_640x400_70Hz;
 
   static constexpr Polarity HPolarity = TimingsVGA[M].H_SyncPolarity;
@@ -52,7 +52,7 @@ void VGAWriter::DrawBlackLineWithMask4x1(bool InVertSync) {
     pio_sm_put_blocking(VGAPio, VGASM, Black4_InHSync);
 }
 
-void VGAWriter::DrawLineVSyncHigh4x1(unsigned Line) {
+void __not_in_flash_func(VGAWriter::DrawLineVSyncHigh4x1)(unsigned Line) {
   static constexpr auto M = VGA_640x400_70Hz;
   // VSync is High throughout.
   // HSync is High for the boarders + visible parts.
@@ -94,7 +94,7 @@ void VGAWriter::DrawLineVSyncHigh4x1(unsigned Line) {
     pio_sm_put_blocking(VGAPio, VGASM, Black4_Sync);
 }
 
-void VGAWriter::DrawBlackLineWithMaskMDA8x1(uint32_t Mask_8) {
+void __not_in_flash_func(VGAWriter::DrawBlackLineWithMaskMDA8x1)(uint32_t Mask_8) {
   static constexpr auto M = VGA_800x600_56Hz;
   const uint32_t BlackMDA_8_HM = BlackMDA_8 | HMaskMDA_8 | Mask_8;
   for (unsigned i = 0;
@@ -108,7 +108,7 @@ void VGAWriter::DrawBlackLineWithMaskMDA8x1(uint32_t Mask_8) {
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_M);
 }
 
-void VGAWriter::DrawLineVSyncHighMDA8x1(unsigned Line) {
+void __not_in_flash_func(VGAWriter::DrawLineVSyncHighMDA8x1)(unsigned Line) {
   static constexpr auto M = VGA_800x600_56Hz;
   // VSync is High throughout.
   // HSync is High for the boarders + visible parts.
@@ -282,7 +282,7 @@ void VGAWriter::checkInputSignal() {
 }
 
 template <VGAResolution R, bool LineDoubling>
-void VGAWriter::drawFrame4x1() {
+void __not_in_flash_func(VGAWriter::drawFrame4x1)() {
   for (uint32_t Line = 0; Line != TimingsVGA[R].V_FrontPorch; ++Line)
     DrawBlackLineWithMask4x1(/*InVSync=*/false);
 
@@ -309,7 +309,7 @@ void VGAWriter::drawFrame4x1() {
 }
 
 template <VGAResolution R, bool LineDoubling>
-void VGAWriter::drawFrame8x1() {
+void __not_in_flash_func(VGAWriter::drawFrame8x1)() {
   // 0. Non-visible Front porch
   for (uint32_t InvisLine = 0; InvisLine != TimingsVGA[R].V_FrontPorch;
        ++InvisLine)
