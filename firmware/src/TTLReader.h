@@ -258,7 +258,9 @@ private:
   float &HHz = TimingsTTL.H_Hz;
   absolute_time_t FrameEnd;
   /// Limits the number of "UNKNOWN MODE" messages the user will see.
-  int UnknownMsgCnt = UNKNOWN_MODE_SHOW_MSG_COUNT;
+  int UnknownMsgMaxCnt = UNKNOWN_MODE_SHOW_MSG_MAX_COUNT;
+  /// Wait for a bit until we display the message to avoid false messages.
+  int UnknownMsgMinCnt = UNKNOWN_MODE_SHOW_MSG_MIN_COUNT;
   void checkAndUpdateMode();
   /// Display a screen with information about the TTL signal.
   void displayTTLInfo();

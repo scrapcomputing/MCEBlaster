@@ -1134,15 +1134,19 @@ void TTLReader::checkAndUpdateMode() {
 
   if (!NewModeOpt) {
     static uint32_t ThrottleMsgCnt;
-    if (ThrottleMsgCnt++ % 64 == 0) {
+    // Don't show the "unknown mode" message immediately wait until the
+    // UnknownMsgMinCnt counter goes to 0.
+    if (ThrottleMsgCnt++ % 64 == 0 && --UnknownMsgMinCnt == 0) {
+      UnknownMsgMinCnt = UNKNOWN_MODE_SHOW_MSG_MIN_COUNT;
       DBG_PRINT(std::cout << "ManualTTLEnabled=" << ManualTTLEnabled << "\n";)
       ManualTTL.dump(std::cout);
       DBG_PRINT(std::cout << "Could not match Polarity="
                           << polarityToStr(VSyncPolarity) << " and Hz=" << VHz
                           << "\n";)
       // Display a helper debugging message that this is an unknown mode.
-      if (UsrAction == UserAction::None && UnknownMsgCnt > 0) {
-        --UnknownMsgCnt;
+      // But limit the number of times the user will see the message.
+      if (UsrAction == UserAction::None && UnknownMsgMaxCnt > 0) {
+        --UnknownMsgMaxCnt;
         char Buff[40];
         snprintf(Buff, 40, "UNKNOWN MODE: VSYNC %dHz POLARITY:%s", (int)VHz,
                  polarityToStr(VSyncPolarity));
@@ -1152,7 +1156,8 @@ void TTLReader::checkAndUpdateMode() {
     return;
   }
   // Reset the counter for the next time we get an unknown mode.
-  UnknownMsgCnt = UNKNOWN_MODE_SHOW_MSG_COUNT;
+  UnknownMsgMaxCnt = UNKNOWN_MODE_SHOW_MSG_MAX_COUNT;
+  UnknownMsgMinCnt = UNKNOWN_MODE_SHOW_MSG_MIN_COUNT;
 
   bool ChangeMode =
       *NewModeOpt != TimingsTTL; // NOTE: This ignore porches/retraces/Hz

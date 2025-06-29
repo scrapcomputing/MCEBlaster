@@ -52,7 +52,10 @@ static constexpr const int MANUAL_TTL_MAX_YBORDER = 200;
 
 static constexpr const uint32_t NO_TTL_SIGNAL_MS = 800;
 static constexpr const uint32_t UNKNOWN_MODE_MS = 2000;
-static constexpr const uint32_t UNKNOWN_MODE_SHOW_MSG_COUNT = 3;
+/// Limit the number of times we will show the "unknown mode" message.
+static constexpr const uint32_t UNKNOWN_MODE_SHOW_MSG_MAX_COUNT = 3;
+/// Wait for a bit until we print the "unknown mode message"
+static constexpr const uint32_t UNKNOWN_MODE_SHOW_MSG_MIN_COUNT = 2;
 static constexpr const int TTL_MOD = 4;
 
 static constexpr const uint32_t LED_FRAME_MOD = 128;
