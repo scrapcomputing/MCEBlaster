@@ -437,6 +437,11 @@ TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
       CGAPxClk = (uint32_t)Flash.read(CGAPxClkIdx);
       EGAPxClk = (uint32_t)Flash.read(EGAPxClkIdx);
       MDAPxClk = (uint32_t)Flash.read(MDAPxClkIdx);
+
+      EGASamplingOffset = (uint32_t)Flash.read(EGASamplingOffsetIdx);
+      CGASamplingOffset = (uint32_t)Flash.read(CGASamplingOffsetIdx);
+      MDASamplingOffset = (uint32_t)Flash.read(MDASamplingOffsetIdx);
+
       ManualTTLEnabled = (bool)Flash.read(ManualTTL_EnabledIdx);
       ManualTTL.Mode = getTTLAtIdx((uint32_t)Flash.read(ManualTTL_ModeIdx));
       ManualTTL.H_Visible = (uint32_t)Flash.read(ManualTTL_H_VisibleIdx);
@@ -1169,7 +1174,7 @@ void TTLReader::checkAndUpdateMode() {
 
 void TTLReader::displayTTLInfo() {
   TimingsTTL.PxClk = getPxClkFor(TimingsTTL);
-  auto SamplingOffset = getSamplingOffsetFor(TimingsTTL);
+  const auto &SamplingOffset = getSamplingOffsetFor(TimingsTTL);
   std::stringstream SS;
   SS << "TTL INFO\n";
   SS << "--------\n";
@@ -1285,8 +1290,8 @@ void TTLReader::handleButtons() {
         to_ms_since_boot(FrameEnd) > to_ms_since_boot(*PxClkEndTime)) {
       PxClkEndTime = std::nullopt;
       if (ChangedPxClk) {
-        displayTxt("PxCLK SAVED TO FLASH ", PX_CLK_EXIT_DISPLAY_MS);
         saveToFlash();
+        displayTxt("PxCLK SAVED TO FLASH ", PX_CLK_EXIT_DISPLAY_MS);
       } else {
         displayTxt("PxCLK UNCHANGED ", PX_CLK_EXIT_DISPLAY_MS);
       }
