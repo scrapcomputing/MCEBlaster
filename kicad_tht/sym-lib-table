@@ -1,3 +1,0 @@
-(sym_lib_table
-  (lib (name MCEBlaster)(type Legacy)(uri ${KIPRJMOD}/MCEBlaster.lib)(options "")(descr ""))
-)
