@@ -45,7 +45,7 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 include_directories("${PICO_SDK_PATH}/src/common/pico_stdlib/include")
 include_directories("${PICO_SDK_PATH}/src/common/pico_base/include")
-include_directories("${PICO_SDK_PATH}/src/rp2_common/hardware_adc/include")
+include_directories("${PICO_SDK_PATH}/src/rp2_common/hardware_flash/include")
 include_directories("${PICO_SDK_PATH}/src/rp2_common/pico_multicore/include")
 include_directories("${PROJECT_BINARY_DIR}/") # for build/config.h
 

@@ -10,7 +10,6 @@
 #include "hardware/clocks.h"
 #include "hardware/vreg.h"
 #include "pico/stdlib.h"
-#include <hardware/adc.h>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -39,7 +38,6 @@ class Pico {
   uint32_t State = 0;
 
 public:
-  static constexpr const uint16_t ADCMax = 1 << 12;
   Pico();
   /// Sets \p Pins to GPIO_OUT.
   inline void setGPIODirectionOut(const PinRange &Pins) {
@@ -63,7 +61,6 @@ public:
     None,
   };
   void initGPIO(const PinRange &Pins, int Direction, Pull Pull, const char *Descr);
-  void initADC(const PinRange &Pins, const char *Descr);
   /// Receives the status of all GPIO pins.
   inline void readGPIO() { State = gpio_get_all(); }
   /// \Returns the state of \p GPIO. Must have run `readGPIO()` first!
@@ -71,9 +68,6 @@ public:
   /// Sets \p GPIO to \p Value.
   inline void setGPIO(uint32_t GPIO, bool Value) { gpio_put(GPIO, Value); }
   inline bool getGPIO(uint32_t GPIO) { return gpio_get(GPIO); }
-  /// Reads ADC at \p GPIO and returns the 12-bit value.
-  /// Note: GPIO must be a valid ADC GPIO, i.e., 26-29.
-  uint16_t readADC(uint32_t GPIO) const;
   void ledSet(bool State) { gpio_put(PICO_DEFAULT_LED_PIN, State); }
   void ledON() { gpio_put(PICO_DEFAULT_LED_PIN, 1); }
   void ledOFF() { gpio_put(PICO_DEFAULT_LED_PIN, 0); }

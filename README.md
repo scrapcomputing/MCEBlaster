@@ -164,12 +164,12 @@ N/A (for Pico) | 2            | 1x20 male through-hole pin-header 2.54mm pitch  
 # Build instructions (for developers)
 ## Requirements:
 - C++17 cross compiler (see instructions in https://github.com/raspberrypi/pico-sdk)
-- Pico-SDK 1.5.0 (https://github.com/raspberrypi/pico-sdk)
+- Pico-SDK 1.5.0 or later (https://github.com/raspberrypi/pico-sdk)
 - cmake 3.13 or later
 
 ## Build
 ```
-mkdir build && cd build
+cd firmware && mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DPICO_FREQ=270000 -DPICO_SDK_PATH=<path-to-pico-sdk> ../src/
 make -j
 ```

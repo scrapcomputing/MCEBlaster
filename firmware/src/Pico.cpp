@@ -58,8 +58,6 @@ Pico::Pico() {
             << frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_PERI) << "KHz\n";
   std::cerr << "clk_ref = " << frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_REF)
             << "KHz\n";
-  std::cerr << "clk_adc = " << frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_ADC)
-            << "KHz\n";
   std::cerr << "clk_rtc = " << frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_RTC)
             << "KHz\n";
 }
@@ -85,25 +83,4 @@ void Pico::initGPIO(const PinRange &Pins, int Direction, Pull Pull,
       break;
     }
   }
-}
-
-void Pico::initADC(const PinRange &Pins, const char *Descr) {
-  DBG_PRINT(std::cout << "Setting up ADC " << std::setw(5) << std::setfill(' ')
-                      << Descr << " ";)
-  DBG_PRINT(Pins.dump(std::cout);)
-  DBG_PRINT(std::cout << "\n";)
-  for (uint32_t Pin = Pins.getFrom(), E = Pins.getTo(); Pin <= E; ++Pin) {
-    adc_gpio_init(Pin);
-  }
-}
-
-uint16_t Pico::readADC(uint32_t GPIO) const {
-  if (!(GPIO >= 26 && GPIO < 29)) {
-    std::cerr << "Bad ADC Pin " << GPIO << ". Good values are 26..29 !\n";
-    abort();
-  }
-  int AdcId = GPIO - 26;
-  adc_select_input(AdcId);
-  uint16_t Raw_12bit = adc_read();
-  return Raw_12bit;
 }
