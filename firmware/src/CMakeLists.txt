@@ -85,6 +85,7 @@ set(LIBS
   pico_multicore
   hardware_dma
   hardware_pio
+  hardware_flash
   )
 target_link_libraries(${PROJECT_NAME} ${LIBS})
 
