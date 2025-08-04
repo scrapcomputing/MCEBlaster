@@ -6,8 +6,8 @@
 
   (title_block
     (title "MCEBlaster")
-    (date "2025-06-28")
-    (rev "0.2")
+    (date "2025-08-03")
+    (rev "0.3")
     (company "Scrap Computing")
   )
 
@@ -1933,7 +1933,7 @@
     (property "Value" "DB15_Male_HighDensity_MountingHoles" (at 226.06 62.8396 0)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Footprint" "Connector_Dsub:DSUB-15-HD_Female_Horizontal_P2.29x1.98mm_EdgePinOffset3.03mm_Housed_MountingHolesOffset4.94mm" (at 201.93 72.39 0)
+    (property "Footprint" "MCEBlaster:VGA_connector_both_short_and_long" (at 201.93 72.39 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" " ~" (at 201.93 72.39 0)
