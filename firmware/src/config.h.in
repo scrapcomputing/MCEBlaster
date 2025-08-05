@@ -1,3 +1,7 @@
+
+#ifndef __CONFIG_H_IN__
+#define __CONFIG_H_IN__
+
 #define PROJECT_NAME "@PROJECT_NAME@"
 #define REVISION_MAJOR @REVISION_MAJOR@
 #define REVISION_MINOR @REVISION_MINOR@
@@ -5,5 +9,10 @@
 #define PICO_FREQ @PICO_FREQ@
 #define PICO_DEFAULT_VOLTAGE @PICO_DEFAULT_VOLTAGE@
 #define PICO_VOLTAGE @PICO_VOLTAGE@
+#cmakedefine PICO1 @PICO1@
+#cmakedefine PICO2 @PICO2@
 #cmakedefine DISABLE_PICO_LED
 #cmakedefine DBGPRINT
+
+#endif // __CONFIG_H_IN__
+

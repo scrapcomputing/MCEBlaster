@@ -23,13 +23,13 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 - On-screen messages
 - Two PCB variants, one SMD and one Through-Hole.
 
-# Installing the firmware to the Pico
-- Download firmware (MCEBlaster.uf2): https://github.com/scrapcomputing/MCEBlaster/releases
+# Installing the firmware to the Pico (Pico 1 or Pico 2)
+- Download firmware (MCEBlaster_pico1.uf2 or MCEBlaster_pico2.uf2): https://github.com/scrapcomputing/MCEBlaster/releases
 - Unplug the Pico
 - Press and hold the small "BOOTSEL" button on the Pico
 - While holding the BOOTSEL button, connect the Pico to your PC with a micro-USB cable
 - The Pico should show up as a mass-storage device
-- Copy the `MCEBlaster.uf2` firmware to the drive associated with the Pico
+- Copy the `MCEBlaster_pico1.uf2` or `MCEBlaster_pico2.uf2` firmware to the drive associated with the Pico
 - Safely eject the mass-storage device
 
 # Usage
@@ -151,12 +151,12 @@ C1             | 1            | Capacitor SMD 0.1uF 1206 (or disk ceramic for Th
 D1             | 1 (optional) | Diode Through-hole (e.g., Schottky 1N5817 or silicon 1N4001)           | For powering the MCE Blaster from the PC (instead of the Pico's micro-USB)
 J2             | 1 (optional) | 1x02 through-hole Male PinHeader 2.54mm                                | For alternative external power
 J1             | 1            | DB9 Male Horizontal                                                    | For connecting to TTL video card
-J3             | 1            | DB15 Female HighDensity Connector (e.g., Kycon K61X-E15S-NJ-VESA, thanks @wrljet) | For connectint to VGA monitor
+J3             | 1            | DB15 Female HighDensity Connector (e.g., Kycon K61X-E15S-NJ-VESA, thanks @wrljet) | For connecting to VGA monitor
 R3 R4 R6       | 3            | 422 Ohm 1206 SMD (or Through-hole) resistor 1% (alternatively 470 Ohm) | For VGA signal DAC
 R2 R5 R7       | 3            | 845 Ohm 1206 SMD (or Through-hole) resistor 1% (alternatively 1K Ohm)  | For VGA signal DAC
 SW1,SW2        | 1            | 6mm Through-hole push button                                           | Auto-adjust and pixel-clock buttons
 U1             | 1            | 74LVC245 SO-20 SMD 12.8x7.5mm aka SOIC (or DIP-20 + optional socket for Through-hole) | Level-shifter IC
-U2             | 1            | RaspberryPi Pico                                                       | Pi Pico
+U2             | 1            | RaspberryPi Pico (or Pico 2)                                           | Pi Pico (or Pico 2)
 N/A (for Pico) | 2            | 1x20 female through-hole pin-header 2.54mm pitch                       | PCB Pico headers
 N/A (for Pico) | 2            | 1x20 male through-hole pin-header 2.54mm pitch                         | Headers for the Pico
 
@@ -164,14 +164,14 @@ N/A (for Pico) | 2            | 1x20 male through-hole pin-header 2.54mm pitch  
 # Build instructions (for developers)
 ## Requirements:
 - C++17 cross compiler (see instructions in https://github.com/raspberrypi/pico-sdk)
-- Pico-SDK 1.5.0 or later (https://github.com/raspberrypi/pico-sdk)
+- Pico-SDK 2.2.0 or later (https://github.com/raspberrypi/pico-sdk)
 - cmake 3.13 or later
 
-## Build
+## Build for Pico (rp2040) or Pico 2 (rp2350)
 ```
-cd firmware && mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DPICO_FREQ=270000 -DPICO_SDK_PATH=<path-to-pico-sdk> ../src/
-make -j
+$ cd firmware && mkdir build && cd build
+$ cmake -DPICO_BOARD=<pico|pico2> -DCMAKE_BUILD_TYPE=Release -DPICO_FREQ=270000 -DPICO_SDK_PATH=<path-to-pico-sdk> ../src/
+$ make -j
 ```
 
 # Resources:
@@ -188,7 +188,7 @@ make -j
 # Change Log
 - Rev 0.1: Initial release.
 - Rev 0.2: Major redesign. Manual TTL, menus show live background
-- Rev 0.3: Better adjustment of pixel clock with sampling offset
+- Rev 0.3: Better adjustment of pixel clock with sampling offset, support for Pico 2
 
 # License
 The project is GPLv2.

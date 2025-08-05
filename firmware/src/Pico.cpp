@@ -6,6 +6,7 @@
 #include "Pico.h"
 #include "Debug.h"
 #include "Utils.h"
+#include "config.h"
 #include "hardware/pll.h"
 #include "hardware/structs/rosc.h"
 #include "hardware/structs/scb.h"
@@ -58,8 +59,14 @@ Pico::Pico() {
             << frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_PERI) << "KHz\n";
   std::cerr << "clk_ref = " << frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_REF)
             << "KHz\n";
+#ifdef PICO1
   std::cerr << "clk_rtc = " << frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_RTC)
             << "KHz\n";
+#endif
+#ifdef PICO2
+  std::cerr << "clk_adc = " << frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_ADC)
+            << "KHz\n";
+#endif
 }
 
 void Pico::initGPIO(const PinRange &Pins, int Direction, Pull Pull,

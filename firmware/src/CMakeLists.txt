@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 
 # Build
 # -----
-# $ mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DPICO_FREQ=270000 -DPICO_SDK_PATH=/path/to/pico-sdk/ ../src/ && make -j
+# $ mkdir build && cd build && cmake -DPICO_BOARD=<pico|pico2> -DCMAKE_BUILD_TYPE=Release -DPICO_FREQ=270000 -DPICO_SDK_PATH=/path/to/pico-sdk/ ../src/ && make -j
 #
 # Options NOTE: don't use 'off' to disable, just remove the argument.
 # -------
@@ -33,7 +33,17 @@ message("PICO_SDK_PATH = ${PICO_SDK_PATH}")
 # note: this must happen before project()
 include(pico_sdk_import.cmake)
 
-set(PROJECT_NAME MCEBlaster)
+if (PICO_BOARD STREQUAL "pico")
+  set(NAME_SUFFIX pico1)
+  set(PICO1 1)
+elseif (PICO_BOARD STREQUAL "pico2")
+  set(PICO2 1)
+  set(NAME_SUFFIX pico2)
+else ()
+  message(FATAL ERROR "ERROR: Please define -DPICO_BOARD pico1 or pico2")
+endif ()
+
+set(PROJECT_NAME "MCEBlaster_${NAME_SUFFIX}")
 project(
   ${PROJECT_NAME}
   LANGUAGES C CXX ASM)
