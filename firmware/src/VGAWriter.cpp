@@ -38,8 +38,8 @@ void __not_in_flash_func(VGAWriter::DrawBlackLineWithMask4x1)(bool InVertSync) {
     Black4_Main |= VMask_4;
 
   for (unsigned i = 0;
-       i < TimingsVGA[M].H_FrontPorch + TimingsVGA[M].H_Visible +
-               TimingsVGA[M].H_BackPorch;
+       i < TimingsVGA[M].H_BackPorch + TimingsVGA[M].H_Visible +
+               TimingsVGA[M].H_FrontPorch;
        i += 4)
     pio_sm_put_blocking(VGAPio, VGASM, Black4_Main);
 
@@ -65,8 +65,8 @@ void __not_in_flash_func(VGAWriter::DrawLineVSyncHigh4x1)(unsigned Line) {
   if constexpr (VPolarity == Polarity::Neg)
     Black4_Porch |= VMask_4;
 
-  // Front Porch is black.
-  for (unsigned i = 0; i < TimingsVGA[M].H_FrontPorch; i += 4)
+  // Back Porch is black.
+  for (unsigned i = 0; i < TimingsVGA[M].H_BackPorch; i += 4)
     pio_sm_put_blocking(VGAPio, VGASM, Black4_Porch);
 
   // The visible part of the line.
@@ -79,8 +79,8 @@ void __not_in_flash_func(VGAWriter::DrawLineVSyncHigh4x1)(unsigned Line) {
     pio_sm_put_blocking(VGAPio, VGASM, Pix4);
   }
 
-  // Back Porch is black
-  for (unsigned i = 0; i < TimingsVGA[M].H_BackPorch; i += 4)
+  // Front Porch is black
+  for (unsigned i = 0; i < TimingsVGA[M].H_FrontPorch; i += 4)
     pio_sm_put_blocking(VGAPio, VGASM, Black4_Porch);
 
   // Sync.
@@ -98,8 +98,8 @@ void __not_in_flash_func(VGAWriter::DrawBlackLineWithMaskMDA8x1)(uint32_t Mask_8
   static constexpr auto M = VGA_800x600_56Hz;
   const uint32_t BlackMDA_8_HM = BlackMDA_8 | HMaskMDA_8 | Mask_8;
   for (unsigned i = 0;
-       i < TimingsVGA[M].H_FrontPorch + TimingsVGA[M].H_Visible +
-               TimingsVGA[M].H_BackPorch;
+       i < TimingsVGA[M].H_BackPorch + TimingsVGA[M].H_Visible +
+               TimingsVGA[M].H_FrontPorch;
        i += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HM);
 
@@ -112,8 +112,8 @@ void __not_in_flash_func(VGAWriter::DrawLineVSyncHighMDA8x1)(unsigned Line) {
   static constexpr auto M = VGA_800x600_56Hz;
   // VSync is High throughout.
   // HSync is High for the boarders + visible parts.
-  // Front Porch
-  for (unsigned i = 0; i < TimingsVGA[M].H_FrontPorch; i += 8)
+  // Back Porch
+  for (unsigned i = 0; i < TimingsVGA[M].H_BackPorch; i += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
 
   // Visible TTL is 720 pixels but VGA is 800 so we need to pad with black
@@ -283,24 +283,25 @@ void VGAWriter::checkInputSignal() {
 
 template <VGAResolution R, bool LineDoubling>
 void __not_in_flash_func(VGAWriter::drawFrame4x1)() {
-  for (uint32_t Line = 0; Line != TimingsVGA[R].V_FrontPorch; ++Line)
+  // Back porch is black.
+  for (uint32_t Line = 0; Line != TimingsVGA[R].V_BackPorch; ++Line)
     DrawBlackLineWithMask4x1(/*InVSync=*/false);
 
   // 1. TTL Visible.
-  // Note: We limit to min(TTL Visible, VGA V_Visble + V_BackPorch) in case the
+  // Note: We limit to min(TTL Visible, VGA V_Visble + V_FrontPorch) in case the
   // TTL input signal is slightly taller than VGA visible. This is useful for
   // some strange inputs that are 260 lines but we would still want to use VGA
   // 640x480.
   uint32_t Line = 0;
   uint32_t LineTTLE =
       std::min(std::min((LineDoubling ? 2 : 1) * TimingsTTL.V_Visible,
-                        TimingsVGA[R].V_Visible + TimingsVGA[R].V_BackPorch),
+                        TimingsVGA[R].V_Visible + TimingsVGA[R].V_FrontPorch),
                (LineDoubling ? 2 : 1) * DisplayBuffer::BuffY);
   for (; Line < LineTTLE; ++Line)
     DrawLineVSyncHigh4x1(Line / (LineDoubling ? 2 : 1));
-  // 2. The rest is black, including the back porch
+  // 2. The rest is black, including the front porch
   static constexpr const uint32_t LineVGAE =
-      TimingsVGA[R].V_Visible + TimingsVGA[R].V_BackPorch;
+      TimingsVGA[R].V_Visible + TimingsVGA[R].V_FrontPorch;
   for (; Line < LineVGAE; ++Line)
     DrawBlackLineWithMask4x1(/*InVSync=*/false);
 
@@ -310,8 +311,8 @@ void __not_in_flash_func(VGAWriter::drawFrame4x1)() {
 
 template <VGAResolution R, bool LineDoubling>
 void __not_in_flash_func(VGAWriter::drawFrame8x1)() {
-  // 0. Non-visible Front porch
-  for (uint32_t InvisLine = 0; InvisLine != TimingsVGA[R].V_FrontPorch;
+  // 0. Non-visible Back porch
+  for (uint32_t InvisLine = 0; InvisLine != TimingsVGA[R].V_BackPorch;
        ++InvisLine)
     DrawBlackLineWithMaskMDA8x1(VMaskMDA_8);
 
@@ -339,8 +340,8 @@ void __not_in_flash_func(VGAWriter::drawFrame8x1)() {
   for (; TTLLine < LineVGAE; ++TTLLine)
     DrawBlackLineWithMaskMDA8x1(VMaskMDA_8);
 
-  // 4. Non-visible back porch
-  for (uint32_t Line = 0; Line != TimingsVGA[R].V_BackPorch; ++Line)
+  // 4. Non-visible front porch
+  for (uint32_t Line = 0; Line != TimingsVGA[R].V_FrontPorch; ++Line)
     DrawBlackLineWithMaskMDA8x1(VMaskMDA_8);
   // 5. Retrace
   for (uint32_t Line = 0; Line != TimingsVGA[R].V_Retrace; ++Line)

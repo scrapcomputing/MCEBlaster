@@ -188,7 +188,7 @@ $ make -j
 # Change Log
 - Rev 0.1: Initial release.
 - Rev 0.2: Major redesign. Manual TTL, menus show live background
-- Rev 0.3: Better adjustment of pixel clock with sampling offset, support for Pico 2
+- Rev 0.3: Better adjustment of pixel clock with sampling offset, support for Pico 2, and fix colors in some monitors
 
 # License
 The project is GPLv2.
