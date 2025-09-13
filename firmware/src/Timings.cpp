@@ -81,9 +81,9 @@ std::optional<TTLDescr> getModeForVPolarityAndHz(Polarity VSyncPolarity,
 
 TTLDescr &TTLDescr::operator=(const TTLDescrReduced &Other) {
   Mode = Other.Mode;
-  H_FrontPorch = Other.H_FrontPorch;
+  H_BackPorch = Other.H_BackPorch;
   H_Visible = Other.H_Visible;
-  V_FrontPorch = Other.V_FrontPorch;
+  V_BackPorch = Other.V_BackPorch;
   V_Visible = Other.V_Visible;
   return *this;
 }
@@ -108,20 +108,20 @@ void TTLDescr::dumpFull(std::ostream &OS, uint32_t SamplingOffset) const {
      << " KHz POLARITY: " << polarityToStr(H_SyncPolarity) << "\n";
   OS << "PIXEL CLOCK: " << PxClkStr << "MHz SAMPLING OFFSET: " << SamplingOffset << "\n";
   OS << "HORIZONTAL VISIBLE:     " << H_Visible - XB << "\n";
-  OS << "HORIZONTAL FRONT PORCH: " << H_FrontPorch << "\n";
-  // OS << "HORIZONTAL BACK PORCH:  " << H_BackPorch << "\n";
+  OS << "HORIZONTAL BACK PORCH: " << H_BackPorch << "\n";
+  // OS << "HORIZONTAL FRONT PORCH:  " << H_FrontPorch << "\n";
   // OS << "HORIZONTAL RETRACE:     " << H_Sync << "\n";
   OS << "VERTICAL VISIBLE:     " << V_Visible - YB << "\n";
-  OS << "VERTICAL FRONT PORCH: " << V_FrontPorch << "\n";
-  // OS << "VERTICAL BACK PORCH:  " << V_BackPorch << "\n";
+  OS << "VERTICAL BACK PORCH: " << V_BackPorch << "\n";
+  // OS << "VERTICAL FRONT PORCH:  " << V_FrontPorch << "\n";
   // OS << "VERTICAL RETRACE:     " << V_Sync << "\n";
 }
 
 TTLDescrReduced &TTLDescrReduced::operator=(const TTLDescr &Other) {
   Mode = Other.Mode;
-  H_FrontPorch = Other.H_FrontPorch;
+  H_BackPorch = Other.H_BackPorch;
   H_Visible = Other.H_Visible;
-  V_FrontPorch = Other.V_FrontPorch;
+  V_BackPorch = Other.V_BackPorch;
   V_Visible = Other.V_Visible;
   return *this;
 }
@@ -129,7 +129,7 @@ TTLDescrReduced &TTLDescrReduced::operator=(const TTLDescr &Other) {
 void TTLDescrReduced::dump(std::ostream &OS) const {
   OS << "VIDEO MODE: " << modeToStr(Mode) << "\n";
   OS << "HORIZONTAL VISIBLE:     " << H_Visible - XB << "\n";
-  OS << "HORIZONTAL FRONT PORCH: " << H_FrontPorch << "\n";
+  OS << "HORIZONTAL BACK PORCH: " << H_BackPorch << "\n";
   OS << "VERTICAL VISIBLE:     " << V_Visible - YB << "\n";
-  OS << "VERTICAL FRONT PORCH: " << V_FrontPorch << "\n";
+  OS << "VERTICAL BACK PORCH: " << V_BackPorch << "\n";
 }

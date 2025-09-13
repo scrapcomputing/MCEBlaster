@@ -182,12 +182,12 @@ void AutoAdjustBorder::applyBorders(const TTLDescr &TimingsTTL) {
 
 void AutoAdjustBorder::setBorder(const BorderXY &XY) {
   if (ManualTTLEnabled && !XBorderAUTO)
-    XBorder = ManualTTL.H_FrontPorch;
+    XBorder = ManualTTL.H_BackPorch;
   else
     XBorder = XY.X;
 
   if (ManualTTLEnabled && !YBorderAUTO)
-    YBorder = ManualTTL.V_FrontPorch;
+    YBorder = ManualTTL.V_BackPorch;
   else
     YBorder = XY.Y;
 }
@@ -448,9 +448,9 @@ TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
       ManualTTL.V_Visible = (uint32_t)Flash.read(ManualTTL_V_VisibleIdx);
       if (ManualTTLEnabled) {
         XBorderAUTO = (uint32_t)Flash.read(XBorderAUTOIdx);
-        ManualTTL.H_FrontPorch = (int)Flash.read(ManualTTL_H_FrontPorchIdx);
+        ManualTTL.H_BackPorch = (int)Flash.read(ManualTTL_H_BackPorchIdx);
         YBorderAUTO = (uint32_t)Flash.read(YBorderAUTOIdx);
-        ManualTTL.V_FrontPorch = (int)Flash.read(ManualTTL_V_FrontPorchIdx);
+        ManualTTL.V_BackPorch = (int)Flash.read(ManualTTL_V_BackPorchIdx);
       }
 
       auto ReadBorderSafe = [this, &Flash](int Idx) -> std::optional<BorderXY> {
@@ -476,10 +476,10 @@ TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
       DBG_PRINT(std::cout << "ManualTTL V Visible=" << ManualTTL.V_Visible
                           << "\n";)
       DBG_PRINT(std::cout << "XBorderAUTO=" << XBorderAUTO << "\n";)
-      DBG_PRINT(std::cout << "ManualTTL H FrontPorch=" << ManualTTL.H_FrontPorch
+      DBG_PRINT(std::cout << "ManualTTL H BackPorch=" << ManualTTL.H_BackPorch
                           << "\n";)
       DBG_PRINT(std::cout << "YBorderAUTO=" << YBorderAUTO << "\n";)
-      DBG_PRINT(std::cout << "ManualTTL V FrontPorch=" << ManualTTL.V_FrontPorch
+      DBG_PRINT(std::cout << "ManualTTL V BackPorch=" << ManualTTL.V_BackPorch
                           << "\n";)
     } else {
       DBG_PRINT(std::cout << "Flash not valid!\n";);
@@ -558,9 +558,9 @@ bool __not_in_flash_func(TTLReader::readLineMDA)(uint32_t Line) {
   // Now fill in the line until HSync is high.
   uint32_t PixelX = 0;
   uint32_t BuffX = 0;
-  uint32_t XBorderAdj = XBorder + /*FIFO sz=*/8 * /*Pixels per FIFO Entry=*/8;
-  // Divide by 2 because we are packing 2 pixels per byte.
-  uint32_t BuffXBorder = XBorderAdj / 2 & 0xfffffffc; // Must be 4-byte aligned!
+  uint32_t XBorderAdj =
+      XBorder + (/*FIFO sz (not filling up)=*/4 * /*Pixels per FIFO Entry=*/8);
+  uint32_t BuffXBorder = XBorderAdj & 0xfffffffc; // Must be 4-byte aligned!
 
   // Wait here if we are still in HSync retrace
   while (gpio_get(TTL_HSYNC_GPIO) != 0)
@@ -881,13 +881,13 @@ void TTLReader::saveToFlash() {
 
   FlashValues[XBorderAUTOIdx] =
       ManualTTLEnabled && XBorderAUTO ? XBorderAUTO : 0;
-  FlashValues[ManualTTL_H_FrontPorchIdx] =
-      ManualTTLEnabled ? ManualTTL.H_FrontPorch : 0;
+  FlashValues[ManualTTL_H_BackPorchIdx] =
+      ManualTTLEnabled ? ManualTTL.H_BackPorch : 0;
 
   FlashValues[YBorderAUTOIdx] =
       ManualTTLEnabled && YBorderAUTO ? YBorderAUTO : 0;
-  FlashValues[ManualTTL_V_FrontPorchIdx] =
-      ManualTTLEnabled ? ManualTTL.V_FrontPorch : 0;
+  FlashValues[ManualTTL_V_BackPorchIdx] =
+      ManualTTLEnabled ? ManualTTL.V_BackPorch : 0;
   // Legalize just in case.
   legalizeManualTTL(ManualTTL);
 
@@ -932,7 +932,7 @@ void TTLReader::printManualTTLMenu() {
 
   ManualTTLMenu.addMenuItem(
       ManualTTLMenu_XBorder_ItemIdx, ManualTTLEnabled && !XBorderAUTO,
-      /*Prefix=*/"", /*Item=*/std::to_string(ManualTTL.H_FrontPorch));
+      /*Prefix=*/"", /*Item=*/std::to_string(ManualTTL.H_BackPorch));
 
   // A switch for turning on/off YBorder setting
   ManualTTLMenu.addMenuItem(
@@ -941,7 +941,7 @@ void TTLReader::printManualTTLMenu() {
 
   ManualTTLMenu.addMenuItem(
       ManualTTLMenu_YBorder_ItemIdx, ManualTTLEnabled && !YBorderAUTO,
-      /*Prefix=*/"", /*Item=*/std::to_string(ManualTTL.V_FrontPorch));
+      /*Prefix=*/"", /*Item=*/std::to_string(ManualTTL.V_BackPorch));
 
   ManualTTLMenu.display(/*Selection=*/ManualTTLMenuIdx, MANUAL_TTL_DISPLAY_MS);
 }
@@ -990,10 +990,12 @@ bool TTLReader::manualTTLMode() {
   bool LongLeft = AutoAdjustBtn.get() == ButtonState::LongPress;
   bool LongRight = PxClkBtn.get() == ButtonState::LongPress;
   if (LongLeft || LongRight) {
-    if (LongRight) {
-      ManualTTLMenu.incrSelection(ManualTTLMenuIdx);
-    } else if (LongLeft) {
-      ManualTTLMenu.decrSelection(ManualTTLMenuIdx);
+    if (ManualTTLEnabled) {
+      if (LongRight) {
+        ManualTTLMenu.incrSelection(ManualTTLMenuIdx);
+      } else if (LongLeft) {
+        ManualTTLMenu.decrSelection(ManualTTLMenuIdx);
+      }
     }
     printManualTTLMenu();
     return true;
@@ -1036,8 +1038,8 @@ bool TTLReader::manualTTLMode() {
         // XBorder
         auto NextXBorder =
             std::min(MANUAL_TTL_MAX_XBORDER,
-                     ManualTTL.H_FrontPorch + MANUAL_TTL_XBORDER_STEP);
-        ManualTTL.H_FrontPorch = NextXBorder;
+                     ManualTTL.H_BackPorch + MANUAL_TTL_XBORDER_STEP);
+        ManualTTL.H_BackPorch = NextXBorder;
         break;
       }
       case ManualTTLMenu_YBorderAUTO_ItemIdx: {
@@ -1049,8 +1051,8 @@ bool TTLReader::manualTTLMode() {
         // YBorder
         auto NextYBorder =
             std::min(MANUAL_TTL_MAX_YBORDER,
-                     ManualTTL.V_FrontPorch + MANUAL_TTL_YBORDER_STEP);
-        ManualTTL.V_FrontPorch = NextYBorder;
+                     ManualTTL.V_BackPorch + MANUAL_TTL_YBORDER_STEP);
+        ManualTTL.V_BackPorch = NextYBorder;
         break;
       }
       }
@@ -1093,8 +1095,8 @@ bool TTLReader::manualTTLMode() {
         // XBorder
         auto PrevXBorder =
             std::max(-MANUAL_TTL_MAX_XBORDER,
-                     ManualTTL.H_FrontPorch - MANUAL_TTL_XBORDER_STEP);
-        ManualTTL.H_FrontPorch = PrevXBorder;
+                     ManualTTL.H_BackPorch - MANUAL_TTL_XBORDER_STEP);
+        ManualTTL.H_BackPorch = PrevXBorder;
         break;
       }
       case ManualTTLMenu_YBorderAUTO_ItemIdx: {
@@ -1106,8 +1108,8 @@ bool TTLReader::manualTTLMode() {
         // YBorder
         auto PrevYBorder =
             std::max(-MANUAL_TTL_MAX_YBORDER,
-                     ManualTTL.V_FrontPorch - MANUAL_TTL_YBORDER_STEP);
-        ManualTTL.V_FrontPorch = PrevYBorder;
+                     ManualTTL.V_BackPorch - MANUAL_TTL_YBORDER_STEP);
+        ManualTTL.V_BackPorch = PrevYBorder;
         break;
       }
       }
@@ -1165,15 +1167,13 @@ void TTLReader::checkAndUpdateMode() {
     DBG_PRINT(std::cout << "\nChangeMode: " << *NewModeOpt << "\n";)
     DBG_PRINT(std::cout << "      From: " << TimingsTTL << "\n";)
     DBG_PRINT(std::cout << "OLD:\n";)
-    DBG_PRINT(TimingsTTL.dumpFull(std::cout);)
+    DBG_PRINT(TimingsTTL.dumpFull(std::cout, 0);)
     DBG_PRINT(std::cout << "NEW:\n";)
-    DBG_PRINT(NewModeOpt->dumpFull(std::cout);)
-    if ((*NewModeOpt).Mode != TimingsTTL.Mode) {
-      Buff.setMode(*NewModeOpt);
-      TimingsTTL = *NewModeOpt;
-      getDividerAutomatically();
-      switchPio();
-    }
+    DBG_PRINT(NewModeOpt->dumpFull(std::cout, 0);)
+    Buff.setMode(*NewModeOpt);
+    TimingsTTL = *NewModeOpt;
+    getDividerAutomatically();
+    switchPio();
   }
 }
 

@@ -113,29 +113,28 @@ void __not_in_flash_func(VGAWriter::DrawLineVSyncHighMDA8x1)(unsigned Line) {
   // VSync is High throughout.
   // HSync is High for the boarders + visible parts.
   // Back Porch
-  for (unsigned i = 0; i < TimingsVGA[M].H_BackPorch; i += 8)
+  unsigned X = 0;
+  for (; X < TimingsVGA[M].H_BackPorch; X += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
 
   // Visible TTL is 720 pixels but VGA is 800 so we need to pad with black
   // pixels such that the image can get centered proplerly.
-  unsigned Padding = TimingsVGA[M].H_Visible - TimingsTTL.H_Visible;
-  unsigned LeftPaddingForCentering = Padding / /* left half: */ 2;
-  for (unsigned i = 0; i < LeftPaddingForCentering; i += 8)
+  unsigned Padding = (TimingsVGA[M].H_Visible - TimingsTTL.H_Visible) / 2;
+  for (; X < Padding; X += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
 
   // The visible part of the line.
-  for (unsigned X = 0, E = TimingsTTL.H_Visible; X < E; X += 8) {
-    uint32_t Pixels8_HV = Buff.getMDA32(Line, X) | HVMaskMDA_8;
+  for (unsigned Idx = 0, E = TimingsTTL.H_Visible; Idx < E; Idx += 8) {
+    uint32_t Pixels8_HV = Buff.getMDA32(Line, Idx) | HVMaskMDA_8;
     pio_sm_put_blocking(VGAPio, VGASM, Pixels8_HV);
   }
+  X += TimingsTTL.H_Visible;
 
-  // Fill the right hand side Visible TTL-VGA gap with black pixels.
-  unsigned RightPaddingForCentering = Padding - LeftPaddingForCentering;
-  for (unsigned i = 0, E = RightPaddingForCentering; i < E; i += 8)
-    pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
-
-  // Right Border is black
-  for (unsigned i = 0; i < TimingsVGA[M].H_BackPorch; i += 8)
+  // Fill the right hand side Visible TTL-VGA gap and the front-porch with black
+  // pixels.
+  for (unsigned E = TimingsVGA[M].H_BackPorch + TimingsVGA[M].H_Visible +
+                    TimingsVGA[M].H_FrontPorch;
+       X < E; X += 8)
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_HV);
 
   // Retrace: HSync is Low.
@@ -288,17 +287,29 @@ void __not_in_flash_func(VGAWriter::drawFrame4x1)() {
     DrawBlackLineWithMask4x1(/*InVSync=*/false);
 
   // 1. TTL Visible.
+  uint32_t Line = 0;
+  // If there is empty space below the screen (e.g. in TTL resolutions like
+  // 640x350 that are drawn in 640x400), then center the image vertically.
+  uint32_t TTLV = (LineDoubling ? 2 : 1) * TimingsTTL.V_Visible;
+  if (TimingsVGA[R].V_Visible > TTLV) {
+    // Vertical VGA-TTL visible gap, fill with black lines.
+    uint32_t VGA_TTL_VerticalGap = TimingsVGA[R].V_Visible - TTLV;
+    uint32_t CenteringLinesTop = VGA_TTL_VerticalGap / 2;
+    for (; Line < CenteringLinesTop; ++Line)
+      DrawBlackLineWithMask4x1(/*InVSync=*/false);
+  }
+  uint32_t Offset = Line;
   // Note: We limit to min(TTL Visible, VGA V_Visble + V_FrontPorch) in case the
   // TTL input signal is slightly taller than VGA visible. This is useful for
   // some strange inputs that are 260 lines but we would still want to use VGA
   // 640x480.
-  uint32_t Line = 0;
-  uint32_t LineTTLE =
+  uint32_t DrawnLines =
       std::min(std::min((LineDoubling ? 2 : 1) * TimingsTTL.V_Visible,
                         TimingsVGA[R].V_Visible + TimingsVGA[R].V_FrontPorch),
                (LineDoubling ? 2 : 1) * DisplayBuffer::BuffY);
+  uint32_t LineTTLE = Offset + DrawnLines;
   for (; Line < LineTTLE; ++Line)
-    DrawLineVSyncHigh4x1(Line / (LineDoubling ? 2 : 1));
+    DrawLineVSyncHigh4x1((Line - Offset) / (LineDoubling ? 2 : 1));
   // 2. The rest is black, including the front porch
   static constexpr const uint32_t LineVGAE =
       TimingsVGA[R].V_Visible + TimingsVGA[R].V_FrontPorch;

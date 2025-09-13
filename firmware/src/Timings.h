@@ -55,7 +55,11 @@ const char *polarityToStr(Polarity P);
 // Ideally the buffer would contain only non-black pixels but our XBorder may be
 // off by a few pixels, so we create a buffer XB larger to include XB black
 // pixels.
+#if defined(PICO_RP2040)
 static constexpr const int XB = 8;
+#elif defined(PICO_RP2350)
+static constexpr const int XB = 16;
+#endif
 static constexpr const int YB = 2;
 
 struct VGADescr {
@@ -142,9 +146,9 @@ struct TTLDescr {
 /// This is used for storing the ManualTTL settings.
 struct TTLDescrReduced {
   TTL Mode = TTL::CGA;
-  int H_FrontPorch = 0;
+  int H_BackPorch = 0;
   uint32_t H_Visible = 0;
-  int V_FrontPorch = 0;
+  int V_BackPorch = 0;
   uint32_t V_Visible = 0;
   TTLDescrReduced &operator=(const TTLDescr &Other);
   void dump(std::ostream &OS) const;

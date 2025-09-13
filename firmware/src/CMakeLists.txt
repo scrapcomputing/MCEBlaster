@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.13)
 # -------
 # o -DFULL_FLASH_FREQ=on to disable reducing the flash frequency
 # o -DDISABLE_PICO_LED=on to disable the Pico's blinking LED.
-# o -DDBGPRINT=on to enable debug messages
+# o -DDBGPRINT=on to enable debug messages. WARNING: You may need to run 'git submodule update --init' from your SDK directory to get TinyUSB to work!
 # o -DPICO_FREQ=<KHz> to set the Pico's frequency
 # o -DPICO_VOLTAGE=<voltage> VREG_VOLTAGE_1_10 (=1.10v) is the default
 
@@ -124,6 +124,7 @@ if (DISABLE_USB_DBG STREQUAL "0")
   pico_enable_stdio_uart(${PROJECT_NAME} 0)
 endif ()
 message("DISABLE_USB_DBG = ${DISABLE_USB_DBG}")
+message("DBGPRINT = ${DBGPRINT}")
 
 message("PICO_LED = ${PICO_LED}")
 message("PICO_FREQ = ${PICO_FREQ} (KHz)")

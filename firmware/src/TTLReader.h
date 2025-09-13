@@ -155,9 +155,9 @@ private:
     ManualTTL_H_VisibleIdx,
     ManualTTL_V_VisibleIdx,
     XBorderAUTOIdx,
-    ManualTTL_H_FrontPorchIdx,
+    ManualTTL_H_BackPorchIdx,
     YBorderAUTOIdx,
-    ManualTTL_V_FrontPorchIdx,
+    ManualTTL_V_BackPorchIdx,
     MaxFlashIdx,
   };
   static constexpr const uint32_t InvalidBorder = 0xffffffff;
