@@ -1271,7 +1271,8 @@ void TTLReader::handleButtons() {
     // This is normal operation. We have already displayed the current PxClk,
     // now we can adjust it.
     if (BtnB == ButtonState::Release || BtnB == ButtonState::MedRelease ||
-        BtnA == ButtonState::Release || BtnA == ButtonState::MedRelease) {
+        BtnB == ButtonState::LongPress || BtnA == ButtonState::Release ||
+        BtnA == ButtonState::MedRelease || BtnA == ButtonState::LongPress) {
       if (NoSignal) {
         displayTxt("NO TTL SIGNAL", NO_TTL_SIGNAL_MS);
         PxClkEndTime = std::nullopt;
@@ -1280,11 +1281,13 @@ void TTLReader::handleButtons() {
       }
       ChangedPxClk = true;
       UsrAction = UserAction::PxClkMode_Modify;
-      bool IncreasePxClk =
-          BtnB == ButtonState::Release || BtnB == ButtonState::MedRelease;
+      bool IncreasePxClk = BtnB == ButtonState::Release ||
+                           BtnB == ButtonState::MedRelease ||
+                           BtnB == ButtonState::LongPress;
       PxClkEndTime = delayed_by_ms(FrameEnd, PX_CLK_END_TIME_MS);
       bool SmallStep =
-          BtnA == ButtonState::MedRelease || BtnB == ButtonState::MedRelease;
+          BtnA == ButtonState::MedRelease || BtnB == ButtonState::MedRelease ||
+          BtnA == ButtonState::LongPress || BtnB == ButtonState::LongPress;
       changePxClk(/*Increase=*/IncreasePxClk, SmallStep);
       getDividerAutomatically();
       switchPio();
