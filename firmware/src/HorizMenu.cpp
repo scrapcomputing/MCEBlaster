@@ -29,7 +29,7 @@ void HorizMenu::display(int Selection, int DisplayTime) {
 
 void HorizMenu::incrSelection(int &Selection) {
   do {
-    Selection = (Selection + 1) % (MenuItems.size() + 1);
+    Selection = (Selection + 1) % MenuItems.size();
   } while (!MenuItems[Selection].Enabled);
 }
 
