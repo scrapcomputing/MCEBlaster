@@ -9,58 +9,6 @@
 #include <cstring>
 
 DisplayBuffer::DisplayBuffer() : SplashXPM(splash) {
-  CharMap.emplace(std::make_pair('0', Char_0));
-  CharMap.emplace(std::make_pair('1', Char_1));
-  CharMap.emplace(std::make_pair('2', Char_2));
-  CharMap.emplace(std::make_pair('3', Char_3));
-  CharMap.emplace(std::make_pair('4', Char_4));
-  CharMap.emplace(std::make_pair('5', Char_5));
-  CharMap.emplace(std::make_pair('6', Char_6));
-  CharMap.emplace(std::make_pair('7', Char_7));
-  CharMap.emplace(std::make_pair('8', Char_8));
-  CharMap.emplace(std::make_pair('9', Char_9));
-  CharMap.emplace(std::make_pair('A', Char_A));
-  CharMap.emplace(std::make_pair('B', Char_B));
-  CharMap.emplace(std::make_pair('C', Char_C));
-  CharMap.emplace(std::make_pair('D', Char_D));
-  CharMap.emplace(std::make_pair('E', Char_E));
-  CharMap.emplace(std::make_pair('F', Char_F));
-  CharMap.emplace(std::make_pair('G', Char_G));
-  CharMap.emplace(std::make_pair('H', Char_H));
-  CharMap.emplace(std::make_pair('I', Char_I));
-  CharMap.emplace(std::make_pair('J', Char_J));
-  CharMap.emplace(std::make_pair('K', Char_K));
-  CharMap.emplace(std::make_pair('L', Char_L));
-  CharMap.emplace(std::make_pair('M', Char_M));
-  CharMap.emplace(std::make_pair('N', Char_N));
-  CharMap.emplace(std::make_pair('O', Char_O));
-  CharMap.emplace(std::make_pair('P', Char_P));
-  CharMap.emplace(std::make_pair('Q', Char_Q));
-  CharMap.emplace(std::make_pair('R', Char_R));
-  CharMap.emplace(std::make_pair('S', Char_S));
-  CharMap.emplace(std::make_pair('T', Char_T));
-  CharMap.emplace(std::make_pair('U', Char_U));
-  CharMap.emplace(std::make_pair('V', Char_V));
-  CharMap.emplace(std::make_pair('W', Char_W));
-  CharMap.emplace(std::make_pair('X', Char_X));
-  CharMap.emplace(std::make_pair('Y', Char_Y));
-  CharMap.emplace(std::make_pair('Z', Char_Z));
-  CharMap.emplace(std::make_pair('v', Char_v));
-  CharMap.emplace(std::make_pair('x', Char_x));
-  CharMap.emplace(std::make_pair('z', Char_z));
-  CharMap.emplace(std::make_pair('.', Char_PERIOD));
-  CharMap.emplace(std::make_pair(':', Char_COLON));
-  CharMap.emplace(std::make_pair('?', Char_QUESTION));
-  CharMap.emplace(std::make_pair('!', Char_EXCLAMATION));
-  CharMap.emplace(std::make_pair('@', Char_AT));
-  CharMap.emplace(std::make_pair(' ', Char_SPACE));
-  CharMap.emplace(std::make_pair('-', Char_DASH));
-  CharMap.emplace(std::make_pair('>', Char_GT));
-  CharMap.emplace(std::make_pair('+', Char_PLUS));
-  CharMap.emplace(std::make_pair('-', Char_MINUS));
-  CharMap.emplace(std::make_pair('[', Char_SQBR_OPEN));
-  CharMap.emplace(std::make_pair(']', Char_SQBR_CLOSE));
-
   // The DMA is used for copying txt to screen.
   DMAChannel = dma_claim_unused_channel(true);
   DMAChannel2 = dma_claim_unused_channel(true);

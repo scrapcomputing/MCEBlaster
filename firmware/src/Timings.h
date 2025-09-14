@@ -56,11 +56,11 @@ const char *polarityToStr(Polarity P);
 // off by a few pixels, so we create a buffer XB larger to include XB black
 // pixels.
 #if defined(PICO_RP2040)
-static constexpr const int XB = 8;
+static constexpr const int XB = 16;
 #elif defined(PICO_RP2350)
 static constexpr const int XB = 16;
 #endif
-static constexpr const int YB = 2;
+static constexpr const int YB = 0;
 
 struct VGADescr {
   uint32_t H_FrontPorch;

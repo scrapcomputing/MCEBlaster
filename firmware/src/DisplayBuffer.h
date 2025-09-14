@@ -23,13 +23,62 @@ class DisplayBuffer {
   // The DMA used for filling in the frame buffer border with black.
   int DMAChannel2;
 
-  std::unordered_map<char, const uint8_t *> CharMap;
-
   const uint8_t *getCharSafe(char C) {
-    auto It = CharMap.find(C);
-    if (It == CharMap.end())
-      return Char_SPACE;
-    return It->second;
+    // clang-format off
+    switch(C) {
+    case '0': return Char_0;
+    case '1': return Char_1;
+    case '2': return Char_2;
+    case '3': return Char_3;
+    case '4': return Char_4;
+    case '5': return Char_5;
+    case '6': return Char_6;
+    case '7': return Char_7;
+    case '8': return Char_8;
+    case '9': return Char_9;
+    case 'A': return Char_A;
+    case 'B': return Char_B;
+    case 'C': return Char_C;
+    case 'D': return Char_D;
+    case 'E': return Char_E;
+    case 'F': return Char_F;
+    case 'G': return Char_G;
+    case 'H': return Char_H;
+    case 'I': return Char_I;
+    case 'J': return Char_J;
+    case 'K': return Char_K;
+    case 'L': return Char_L;
+    case 'M': return Char_M;
+    case 'N': return Char_N;
+    case 'O': return Char_O;
+    case 'P': return Char_P;
+    case 'Q': return Char_Q;
+    case 'R': return Char_R;
+    case 'S': return Char_S;
+    case 'T': return Char_T;
+    case 'U': return Char_U;
+    case 'V': return Char_V;
+    case 'W': return Char_W;
+    case 'X': return Char_X;
+    case 'Y': return Char_Y;
+    case 'Z': return Char_Z;
+    case 'v': return Char_v;
+    case 'x': return Char_x;
+    case 'z': return Char_z;
+    case '.': return Char_PERIOD;
+    case ':': return Char_COLON;
+    case '?': return Char_QUESTION;
+    case '!': return Char_EXCLAMATION;
+    case '@': return Char_AT;
+    case ' ': return Char_SPACE;
+    case '>': return Char_GT;
+    case '+': return Char_PLUS;
+    case '-': return Char_MINUS;
+    case '[': return Char_SQBR_OPEN;
+    case ']': return Char_SQBR_CLOSE;
+    default: return Char_SPACE;
+    }
+    // clang-format on
   }
 
 public:

@@ -509,17 +509,6 @@ static constexpr const uint8_t Char_SPACE[] {
   0b00000000,
 };
 
-static constexpr const uint8_t Char_DASH[] {
-  0b00000000,
-  0b00000000,
-  0b00000000,
-  0b00000000,
-  0b01111111,
-  0b00000000,
-  0b00000000,
-  0b00000000,
-};
-
 static constexpr const uint8_t Char_GT[] {
   0b00000000,
   0b00100000,
