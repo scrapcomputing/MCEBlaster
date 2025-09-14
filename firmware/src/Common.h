@@ -7,6 +7,11 @@
 #define __COMMON_H__
 
 #include <cstdint>
+static constexpr const int PXL_CLK_SMALL_STEP = 1000;
+static constexpr const int PXL_CLK_STEP = 10000;
+
+// Tolerate this much error in vertical Hz when auto-detecting the video mode.
+static constexpr int AUTO_DETECT_MODE_V_HZ_ERROR = 1;
 
 static constexpr const uint32_t VGA_RGB_GPIO = 14; // 14-19, 2 bits per color
 static constexpr const uint32_t VGA_MDA_GPIO = 18;

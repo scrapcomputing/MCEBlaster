@@ -4,6 +4,7 @@
 //
 
 #include "Timings.h"
+#include "Common.h"
 #include "Debug.h"
 #include <iostream>
 
@@ -65,13 +66,12 @@ const char *polarityToStr(Polarity P) {
 }
 
 /// The allowed error for matching the measured Hz compared to the presets.
-static constexpr float HzError = 1;
 
 std::optional<TTLDescr> getModeForVPolarityAndHz(Polarity VSyncPolarity,
                                                  uint32_t ReqHz) {
   for (int Idx = 0; Idx != PresetTimingsMAX; ++Idx) {
     const auto &Mode = PresetTimingsTTL[Idx];
-    if (std::abs(Mode.V_Hz - ReqHz) <= HzError) {
+    if (std::abs(Mode.V_Hz - ReqHz) <= AUTO_DETECT_MODE_V_HZ_ERROR) {
       if (Mode.V_SyncPolarity == VSyncPolarity)
         return Mode;
     }

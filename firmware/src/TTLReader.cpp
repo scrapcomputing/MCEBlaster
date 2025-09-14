@@ -315,15 +315,15 @@ void TTLReader::changePxClk(bool Increase, bool SmallStep) {
   DBG_PRINT(std::cout << "\n-----------\n";)
   DBG_PRINT(std::cout << "Pixel Clock Before=" << PixelClock;)
   // WARNING: This should match the sampling offsets in the PIO files!!!
-  static constexpr const uint32_t SamplingOffsetMod = 5;
+  static constexpr const uint32_t SamplingOffsetMod = 16 + 1;
   if (Increase) {
     DBG_PRINT(std::cout << " ++ ";)
     if (SmallStep) {
       SamplingOffset = (SamplingOffset + 1) % SamplingOffsetMod;
       if (SamplingOffset % 5 == 0)
-        PixelClock += 1000;
+        PixelClock += PXL_CLK_SMALL_STEP;
     } else {
-      PixelClock += 10000;
+      PixelClock += PXL_CLK_STEP;
     }
   } else {
     DBG_PRINT(std::cout << " -- ";)
@@ -331,9 +331,9 @@ void TTLReader::changePxClk(bool Increase, bool SmallStep) {
       SamplingOffset =
           SamplingOffset == 0 ? (SamplingOffsetMod - 1) : SamplingOffset - 1;
       if (SamplingOffset % SamplingOffsetMod == 0)
-        PixelClock -= 1000;
+        PixelClock -= PXL_CLK_SMALL_STEP;
     } else {
-      PixelClock -= 10000;
+      PixelClock -= PXL_CLK_STEP;
     }
   }
   DBG_PRINT(std::cout << "After=" << PixelClock << "\n";)
@@ -1141,7 +1141,7 @@ void TTLReader::checkAndUpdateMode() {
     if (ThrottleMsgCnt++ % 64 == 0 && --UnknownMsgMinCnt == 0) {
       UnknownMsgMinCnt = UNKNOWN_MODE_SHOW_MSG_MIN_COUNT;
       DBG_PRINT(std::cout << "ManualTTLEnabled=" << ManualTTLEnabled << "\n";)
-      ManualTTL.dump(std::cout);
+      DBG_PRINT(ManualTTL.dump(std::cout);)
       DBG_PRINT(std::cout << "Could not match Polarity="
                           << polarityToStr(VSyncPolarity) << " and Hz=" << VHz
                           << "\n";)
