@@ -315,12 +315,14 @@ void TTLReader::changePxClk(bool Increase, bool SmallStep) {
   DBG_PRINT(std::cout << "\n-----------\n";)
   DBG_PRINT(std::cout << "Pixel Clock Before=" << PixelClock;)
   // WARNING: This should match the sampling offsets in the PIO files!!!
-  static constexpr const uint32_t SamplingOffsetMod = 16 + 1;
+  // Only EGA has 16 offsets, others - 4!
+  const uint32_t SamplingOffsetMod = ((TimingsTTL.Mode == TTL::EGA) ?
+                                       17 : 5); // 16+1 : 4+1
   if (Increase) {
     DBG_PRINT(std::cout << " ++ ";)
     if (SmallStep) {
       SamplingOffset = (SamplingOffset + 1) % SamplingOffsetMod;
-      if (SamplingOffset % 5 == 0)
+      if (SamplingOffset == 0)
         PixelClock += PXL_CLK_SMALL_STEP;
     } else {
       PixelClock += PXL_CLK_STEP;
@@ -330,7 +332,7 @@ void TTLReader::changePxClk(bool Increase, bool SmallStep) {
     if (SmallStep) {
       SamplingOffset =
           SamplingOffset == 0 ? (SamplingOffsetMod - 1) : SamplingOffset - 1;
-      if (SamplingOffset % SamplingOffsetMod == 0)
+      if (SamplingOffset == (SamplingOffsetMod - 1))
         PixelClock -= PXL_CLK_SMALL_STEP;
     } else {
       PixelClock -= PXL_CLK_STEP;
