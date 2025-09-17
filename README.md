@@ -42,8 +42,10 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
   - Push `PIXEL CLOCK` to increment the pixel clock by 10KHz.
   - Push `AUTO ADJUST` to decrement the pixel clock by 10KHz.
 - Fine adjustment:
-  - Medium-push (about half a second push and release) `PIXEL CLOCK` to increment the sampling offset and then increment the pixel clock by 1KHz once we have tried all offsets.
-  - Medium-push (about half a second push and release) `AUTO ADJUST` to decrement the sampling offset and then decrement the pixel clock by 1KHz once we have tried all offsets.
+  - Long-push (push until the push registers) `PIXEL CLOCK` to increment the pixel clock by 1 KHz.
+  - Long-push (push until the push registers) `AUTO ADJUST` to decrement the pixel clock by 1 KHz.
+  - Medium-push (about half a second push and release) `PIXEL CLOCK` to increment the sampling offset and then increment the pixel clock by 1 KHz once we have tried all offsets.
+  - Medium-push (about half a second push and release) `AUTO ADJUST` to decrement the sampling offset and then decrement the pixel clock by 1 KHz once we have tried all offsets.
 - Exit pixel clock adjust mode by not pushing any buttons for 12 seconds. This saves the settings to flash.
 
 ### Sampling Offset (since rev 0.3)

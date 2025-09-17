@@ -178,7 +178,7 @@ private:
   uint32_t &getSamplingOffsetFor(const TTLDescr &Descr);
   void displayPxClk();
   /// Increments the clock divider that corresponds to the current mode.
-  void changePxClk(bool Increase, bool SmallStep);
+  void changePxClk(bool Increase, bool SmallStep, bool OffsetStep);
 
   PioProgramLoader &PioLoader;
 

@@ -320,7 +320,7 @@ void TTLReader::displayPxClk() {
   displayTxt(Txt, PX_CLK_TXT_DISPLAY_MS);
 }
 
-void TTLReader::changePxClk(bool Increase, bool SmallStep) {
+void TTLReader::changePxClk(bool Increase, bool SmallStep, bool OffsetStep) {
   /// \Returns the ClkDiv for the current mode.
   uint32_t &PixelClock = getPxClkFor(TimingsTTL);
   uint32_t &SamplingOffset = getSamplingOffsetFor(TimingsTTL);
@@ -329,22 +329,22 @@ void TTLReader::changePxClk(bool Increase, bool SmallStep) {
   DBG_PRINT(std::cout << "Pixel Clock Before=" << PixelClock;)
   if (Increase) {
     DBG_PRINT(std::cout << " ++ ";)
-    if (SmallStep) {
+    if (OffsetStep) {
       SamplingOffset = (SamplingOffset + 1) % SamplingOffsetMod;
       if (SamplingOffset == 0)
         PixelClock += PXL_CLK_SMALL_STEP;
     } else {
-      PixelClock += PXL_CLK_STEP;
+      PixelClock += SmallStep ? PXL_CLK_SMALL_STEP : PXL_CLK_STEP;
     }
   } else {
     DBG_PRINT(std::cout << " -- ";)
-    if (SmallStep) {
+    if (OffsetStep) {
       SamplingOffset =
           SamplingOffset == 0 ? (SamplingOffsetMod - 1) : SamplingOffset - 1;
       if (SamplingOffset == SamplingOffsetMod - 1)
         PixelClock -= PXL_CLK_SMALL_STEP;
     } else {
-      PixelClock -= PXL_CLK_STEP;
+      PixelClock -= SmallStep ? PXL_CLK_SMALL_STEP : PXL_CLK_STEP;
     }
   }
   DBG_PRINT(std::cout << "After=" << PixelClock << "\n";)
@@ -1297,9 +1297,10 @@ void TTLReader::handleButtons() {
                            BtnB == ButtonState::LongPress;
       PxClkEndTime = delayed_by_ms(FrameEnd, PX_CLK_END_TIME_MS);
       bool SmallStep =
-          BtnA == ButtonState::MedRelease || BtnB == ButtonState::MedRelease ||
           BtnA == ButtonState::LongPress || BtnB == ButtonState::LongPress;
-      changePxClk(/*Increase=*/IncreasePxClk, SmallStep);
+      bool OffsetStep =
+          BtnA == ButtonState::MedRelease || BtnB == ButtonState::MedRelease;
+      changePxClk(/*Increase=*/IncreasePxClk, SmallStep, OffsetStep);
       getDividerAutomatically();
       switchPio();
       checkAndUpdateMode();
