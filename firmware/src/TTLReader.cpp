@@ -293,6 +293,18 @@ uint32_t &TTLReader::getSamplingOffsetFor(const TTLDescr &Descr) {
   }
 }
 
+static uint32_t getSamplingOffsetMod(const TTL M) {
+  switch (M) {
+  case TTL::CGA:
+    return CGAMaxSamplingOffset + 1;
+  case TTL::EGA:
+    return EGAMaxSamplingOffset + 1;
+  case TTL::MDA:
+    return MDAMaxSamplingOffset + 1;
+  }
+  assert(0 && "unreachable!");
+}
+
 void TTLReader::displayPxClk() {
   const uint32_t &PixelClock = getPxClkFor(TimingsTTL);
   const uint32_t &SamplingOffset = getSamplingOffsetFor(TimingsTTL);
@@ -312,12 +324,9 @@ void TTLReader::changePxClk(bool Increase, bool SmallStep) {
   /// \Returns the ClkDiv for the current mode.
   uint32_t &PixelClock = getPxClkFor(TimingsTTL);
   uint32_t &SamplingOffset = getSamplingOffsetFor(TimingsTTL);
+  const uint32_t SamplingOffsetMod = getSamplingOffsetMod(TimingsTTL.Mode);
   DBG_PRINT(std::cout << "\n-----------\n";)
   DBG_PRINT(std::cout << "Pixel Clock Before=" << PixelClock;)
-  // WARNING: This should match the sampling offsets in the PIO files!!!
-  // Only EGA has 16 offsets, others - 4!
-  const uint32_t SamplingOffsetMod = ((TimingsTTL.Mode == TTL::EGA) ?
-                                       17 : 5); // 16+1 : 4+1
   if (Increase) {
     DBG_PRINT(std::cout << " ++ ";)
     if (SmallStep) {
@@ -332,7 +341,7 @@ void TTLReader::changePxClk(bool Increase, bool SmallStep) {
     if (SmallStep) {
       SamplingOffset =
           SamplingOffset == 0 ? (SamplingOffsetMod - 1) : SamplingOffset - 1;
-      if (SamplingOffset == (SamplingOffsetMod - 1))
+      if (SamplingOffset == SamplingOffsetMod - 1)
         PixelClock -= PXL_CLK_SMALL_STEP;
     } else {
       PixelClock -= PXL_CLK_STEP;
