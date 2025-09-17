@@ -517,9 +517,7 @@ bool __not_in_flash_func(TTLReader::readLineCGA)(uint32_t Line) {
   // Now fill in the line until HSync is high.
   uint32_t X = 0;
 
-  uint32_t XBorderAdj =
-      (XBorder + /*FIFO sz=*/8 * /*Pixels per FIFO Entry=*/4) &
-      0xfffffffc;                                    // Must be 4-byte aligned!
+  uint32_t XBorderAdj = (XBorder + /*FIFO sz=*/8 * /*Pixels per FIFO Entry=*/4);
   // Wait here if we are still in HSync retrace
   while (gpio_get(TTL_HSYNC_GPIO) != 0)
     ;
