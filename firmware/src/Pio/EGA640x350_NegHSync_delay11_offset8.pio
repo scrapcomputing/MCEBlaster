@@ -6,6 +6,7 @@
 ; Pixel clock 640 mode: 16.257MHz:  61.512ns/pixel ~16.608 instrs / pixel (3.704ns/instr)
 entry:
 .wrap_target
+   set y 8     ; Porch iteration counter (see jmp y-- below)
 loop:
    in pins, TTL_PIN_CNT [10]  ; ISR = HVRRGGBB(#0)
    in pins, TTL_PIN_CNT [10]  ; ISR = HVRRGGBB(#1),HVRRGGBB(#0)
@@ -16,6 +17,11 @@ loop:
 
    ; HSync is now 0, wait until it becomes 1
 wait_hsync_1:
+   jmp y-- loop ; A few more iterations until the TTLReader receives all pixels
+                ; in the fifo queue, otherwise 'push noblock' below will override
+                ; them with black pixels, resulting in horizontal clipping
+   set y 0      ; Make sure we don't take the jmp y-- loop
+
    in null, 32
    push noblock
    jmp pin hsync_is_1         ; break out of loop if HSync is 1
