@@ -11,7 +11,7 @@
 entry:
 
 .wrap_target
-   set y 4     ; Porch iteration counter (see jmp y-- below)
+   set y 2     ; Porch iteration counter (see jmp y-- below)
 loop:
    set x, 6
    bundle:

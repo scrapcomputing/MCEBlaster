@@ -517,7 +517,9 @@ bool __not_in_flash_func(TTLReader::readLineCGA)(uint32_t Line) {
   // Now fill in the line until HSync is high.
   uint32_t X = 0;
 
-  uint32_t XBorderAdj = (XBorder + /*FIFO sz=*/8 * /*Pixels per FIFO Entry=*/4);
+  uint32_t XBorderAdj =
+      (XBorder + /*FIFO sz=*/8 * /*Pixels per FIFO Entry=*/4) &
+      0xfffffffc; // Must be 4-byte aligned!
   // Wait here if we are still in HSync retrace
   while (gpio_get(TTL_HSYNC_GPIO) != 0)
     ;
@@ -568,8 +570,8 @@ bool __not_in_flash_func(TTLReader::readLineMDA)(uint32_t Line) {
   uint32_t PixelX = 0;
   uint32_t BuffX = 0;
   uint32_t XBorderAdj =
-      XBorder + (/*FIFO sz (not filling up)=*/4 * /*Pixels per FIFO Entry=*/8);
-  uint32_t BuffXBorder = XBorderAdj & 0xfffffffc; // Must be 4-byte aligned!
+      (XBorder + /*FIFO sz (not filling up)=*/4 * /*Pixels per FIFO Entry=*/8) &
+      0xfffffffc; // Must be 4-byte aligned!
 
   // Wait here if we are still in HSync retrace
   while (gpio_get(TTL_HSYNC_GPIO) != 0)
@@ -591,8 +593,8 @@ bool __not_in_flash_func(TTLReader::readLineMDA)(uint32_t Line) {
       // We need to come up with the order: 7 6 5 4 3 2 1 0
       uint32_t MDA8 = pio_sm_get_blocking(TTLPio, TTLSM);
       if constexpr (!DiscardData) {
-        if (BuffX >= BuffXBorder)
-          Buff.setMDA32(Line - YBorder, BuffX - BuffXBorder, MDA8);
+        if (BuffX >= XBorderAdj)
+          Buff.setMDA32(Line - YBorder, BuffX - XBorderAdj, MDA8);
       }
       // Since we are packing 2 monochrome values per byte we are increasing
       // BuffX by 4 instead of 8 to avoid dividing it by 2 again in setMDA32().
@@ -1196,7 +1198,7 @@ void TTLReader::displayTTLInfo() {
   Buff.displayPage(SS.str());
 }
 
-void TTLReader::handleButtons() {
+void __not_in_flash_func(TTLReader::handleButtons)() {
   AutoAdjustBtn.tick();
   PxClkBtn.tick();
 

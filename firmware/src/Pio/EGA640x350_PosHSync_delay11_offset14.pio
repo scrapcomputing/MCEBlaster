@@ -6,7 +6,7 @@
 ; Pixel clock 640 mode: 16.257MHz:  61.512ns/pixel ~16.608 instrs / pixel (3.704ns/instr)
 entry:
 .wrap_target
-   set y 8     ; Porch iteration counter (see jmp y-- below)
+   set y 2     ; Porch iteration counter (see jmp y-- below)
 loop:
    in pins, TTL_PIN_CNT [10]  ; ISR = HVRRGGBB(#0)
    in pins, TTL_PIN_CNT [10]  ; ISR = HVRRGGBB(#1),HVRRGGBB(#0)

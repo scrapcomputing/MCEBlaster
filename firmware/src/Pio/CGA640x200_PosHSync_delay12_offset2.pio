@@ -10,7 +10,7 @@
 entry:
 
 .wrap_target
-   set y 8     ; Porch iteration counter (see jmp y-- below)
+   set y 2     ; Porch iteration counter (see jmp y-- below)
 loop:
    in pins, TTL_PIN_CNT [11]
    in pins, TTL_PIN_CNT [11]
