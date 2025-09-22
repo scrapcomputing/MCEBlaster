@@ -192,9 +192,9 @@ void AutoAdjustBorder::setBorder(const BorderXY &XY) {
     YBorder = XY.Y;
 }
 
-void AutoAdjustBorder::forceStart(bool AlwaysON) {
+void AutoAdjustBorder::forceStart() {
   if (Enabled == State::Off)
-    Enabled = AlwaysON ? State::AlwaysON : State::SingleON;
+    Enabled = State::SingleON;
   FrameCnt = 0u;
   StartFrame = FrameCnt + AUTO_ADJUST_START_AFTER;
   StopFrame = FrameCnt + AUTO_ADJUST_DURATION;
@@ -203,20 +203,7 @@ void AutoAdjustBorder::forceStart(bool AlwaysON) {
 void AutoAdjustBorder::runAutoAdjust() {
   DBG_PRINT(std::cout << "Auto Adjusting...\n";)
   TTLR.displayTxt("AUTO ADJUST", AUTO_ADJUST_DISPLAY_MS);
-  forceStart(/*AlwaysON=*/false);
-}
-
-void AutoAdjustBorder::runAlwaysAutoAdjust() {
-  if (Enabled == State::Off) {
-    DBG_PRINT(std::cout << "Auto Adjust ALWAYS ON\n";)
-    TTLR.displayTxt("AUTO ADJUST ALWAYS ON", AUTO_ADJUST_ALWAYS_ON_DISPLAY_MS);
-    forceStart(/*AlwaysON=*/true);
-  } else if (Enabled == State::AlwaysON) {
-    DBG_PRINT(std::cout << "Auto Adjust ALWAYS ON\n";)
-    TTLR.displayTxt("AUTO ADJUST ALWAYS ON DISABLED",
-                    AUTO_ADJUST_ALWAYS_ON_DISPLAY_MS);
-    Enabled = State::Off;
-  }
+  forceStart();
 }
 
 bool AutoAdjustBorder::frameTick(const TTLDescr &TimingsTTL) {
@@ -234,9 +221,6 @@ bool AutoAdjustBorder::frameTick(const TTLDescr &TimingsTTL) {
     switch (Enabled) {
     case State::SingleON:
       Enabled = State::Off;
-      break;
-    case State::AlwaysON:
-      forceStart(/*AlwaysON=*/true);
       break;
     case State::Off:
       break;
@@ -308,11 +292,11 @@ static uint32_t getSamplingOffsetMod(const TTL M) {
 void TTLReader::displayPxClk() {
   const uint32_t &PixelClock = getPxClkFor(TimingsTTL);
   const uint32_t &SamplingOffset = getSamplingOffsetFor(TimingsTTL);
-  static constexpr const int BuffSz = 64;
+  static constexpr const int BuffSz = /*Profile*/12 + 64;
   static char Txt[BuffSz];
-  snprintf(Txt, BuffSz, "PxCLK:%2.3fMHz  SAMPLING OFFSET:%lu  (%s %lux%lu)",
-           (float)PixelClock / 1000000,
-           SamplingOffset,
+  snprintf(Txt, BuffSz,
+           "PROFILE: %lu PxCLK:%2.3fMHz  SAMPLING OFFSET:%lu  (%s %lux%lu)",
+           *ProfileBankOpt, (float)PixelClock / 1000000, SamplingOffset,
            modeToStr(TimingsTTL.Mode),
            TimingsTTL.H_Visible -
                /*XB is an implementation detail, hide it from user*/ XB,
@@ -406,6 +390,67 @@ void TTLReader::updateSyncPolarityVariables() {
   }
 }
 
+void TTLReader::readConfigFromFlash() {
+  DBG_PRINT(std::cout << "Reading from flash...\n";)
+  CGAPxClk = (uint32_t)Flash.read(get(Profile::CGAPxClkIdx));
+  EGAPxClk = (uint32_t)Flash.read(get(Profile::EGAPxClkIdx));
+  MDAPxClk = (uint32_t)Flash.read(get(Profile::MDAPxClkIdx));
+
+  EGASamplingOffset = (uint32_t)Flash.read(get(Profile::EGASamplingOffsetIdx));
+  CGASamplingOffset = (uint32_t)Flash.read(get(Profile::CGASamplingOffsetIdx));
+  MDASamplingOffset = (uint32_t)Flash.read(get(Profile::MDASamplingOffsetIdx));
+
+  ManualTTLEnabled = (bool)Flash.read(get(Profile::ManualTTL_EnabledIdx));
+  ManualTTL.Mode =
+      getTTLAtIdx((uint32_t)Flash.read(get(Profile::ManualTTL_ModeIdx)));
+  ManualTTL.H_Visible =
+      (uint32_t)Flash.read(get(Profile::ManualTTL_H_VisibleIdx));
+  ManualTTL.V_Visible =
+      (uint32_t)Flash.read(get(Profile::ManualTTL_V_VisibleIdx));
+  if (ManualTTLEnabled) {
+    XBorderAUTO = (uint32_t)Flash.read(get(Profile::XBorderAUTOIdx));
+    ManualTTL.H_BackPorch =
+        (int)Flash.read(get(Profile::ManualTTL_H_BackPorchIdx));
+    YBorderAUTO = (uint32_t)Flash.read(get(Profile::YBorderAUTOIdx));
+    ManualTTL.V_BackPorch =
+        (int)Flash.read(get(Profile::ManualTTL_V_BackPorchIdx));
+  }
+
+  auto ReadBorderSafe = [this](Profile Idx) -> std::optional<BorderXY> {
+    uint32_t XY = (uint32_t)Flash.read(get(Idx));
+    // If 0xFFFFFFFF then it's not valid
+    if (XY == InvalidBorder)
+      return std::nullopt;
+    return BorderXY(XY);
+  };
+
+  CGABorderOpt = ReadBorderSafe(Profile::CGABorderIdx);
+  EGABorderOpt = ReadBorderSafe(Profile::EGABorderIdx);
+  MDABorderOpt = ReadBorderSafe(Profile::MDABorderIdx);
+
+  DBG_PRINT(std::cout << "CGABorderOpt=" << (CGABorderOpt ? "Yes" : "No")
+                      << "\n";)
+  DBG_PRINT(std::cout << "EGABorderOpt=" << (EGABorderOpt ? "Yes" : "No")
+                      << "\n";)
+  DBG_PRINT(std::cout << "MDABorderOpt=" << (MDABorderOpt ? "Yes" : "No")
+                      << "\n";)
+
+  DBG_PRINT(std::cout << "CGAPxClk=" << CGAPxClk << "\n";)
+  DBG_PRINT(std::cout << "EGAPxClk=" << EGAPxClk << "\n";)
+  DBG_PRINT(std::cout << "MDAPxClk=" << MDAPxClk << "\n";)
+  DBG_PRINT(std::cout << "ManualTTL Enabled=" << ManualTTLEnabled << "\n";)
+  DBG_PRINT(std::cout << "ManualTTL Mode=" << modeToStr(ManualTTL.Mode)
+                      << "\n";)
+  DBG_PRINT(std::cout << "ManualTTL H Visible=" << ManualTTL.H_Visible << "\n";)
+  DBG_PRINT(std::cout << "ManualTTL V Visible=" << ManualTTL.V_Visible << "\n";)
+  DBG_PRINT(std::cout << "XBorderAUTO=" << XBorderAUTO << "\n";)
+  DBG_PRINT(std::cout << "ManualTTL H BackPorch=" << ManualTTL.H_BackPorch
+                      << "\n";)
+  DBG_PRINT(std::cout << "YBorderAUTO=" << YBorderAUTO << "\n";)
+  DBG_PRINT(std::cout << "ManualTTL V BackPorch=" << ManualTTL.V_BackPorch
+                      << "\n";)
+}
+
 TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
                      DisplayBuffer &Buff, PIO VSyncPolarityPio,
                      uint VSyncPolaritySM, PIO HSyncPolarityPio,
@@ -428,11 +473,12 @@ TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
   HHz = 0;
   VSyncPolarity = Polarity::Pos;
   HSyncPolarity = Polarity::Pos;
+  ProfileBankOpt = 0;
 
   Buff.setMode(TimingsTTL);
   if (ResetToDefaults) {
     DBG_PRINT(std::cout << "\n\n\n*** Reset to defaults ***\n\n\n";)
-    saveToFlash();
+    saveToFlash(/*OnlyProfileBank=*/false, /*AllProfiles=*/true);
     // Flash the LED to let the user know that reset was succesfull
     for (uint32_t Cnt = 0; Cnt != 20; ++Cnt) {
       if (Cnt % 2 == 0)
@@ -444,54 +490,8 @@ TTLReader::TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
     Pi.ledON();
   } else {
     if (Flash.valid()) {
-      DBG_PRINT(std::cout << "Reading from flash...\n";)
-      CGAPxClk = (uint32_t)Flash.read(CGAPxClkIdx);
-      EGAPxClk = (uint32_t)Flash.read(EGAPxClkIdx);
-      MDAPxClk = (uint32_t)Flash.read(MDAPxClkIdx);
-
-      EGASamplingOffset = (uint32_t)Flash.read(EGASamplingOffsetIdx);
-      CGASamplingOffset = (uint32_t)Flash.read(CGASamplingOffsetIdx);
-      MDASamplingOffset = (uint32_t)Flash.read(MDASamplingOffsetIdx);
-
-      ManualTTLEnabled = (bool)Flash.read(ManualTTL_EnabledIdx);
-      ManualTTL.Mode = getTTLAtIdx((uint32_t)Flash.read(ManualTTL_ModeIdx));
-      ManualTTL.H_Visible = (uint32_t)Flash.read(ManualTTL_H_VisibleIdx);
-      ManualTTL.V_Visible = (uint32_t)Flash.read(ManualTTL_V_VisibleIdx);
-      if (ManualTTLEnabled) {
-        XBorderAUTO = (uint32_t)Flash.read(XBorderAUTOIdx);
-        ManualTTL.H_BackPorch = (int)Flash.read(ManualTTL_H_BackPorchIdx);
-        YBorderAUTO = (uint32_t)Flash.read(YBorderAUTOIdx);
-        ManualTTL.V_BackPorch = (int)Flash.read(ManualTTL_V_BackPorchIdx);
-      }
-
-      auto ReadBorderSafe = [this, &Flash](int Idx) -> std::optional<BorderXY> {
-        uint32_t XY = (uint32_t)Flash.read(Idx);
-        // If 0xFFFFFFFF then it's not valid
-        if (XY == InvalidBorder)
-          return std::nullopt;
-        return BorderXY(XY);
-      };
-
-      CGABorderOpt = ReadBorderSafe(CGABorderIdx);
-      EGABorderOpt = ReadBorderSafe(EGABorderIdx);
-      MDABorderOpt = ReadBorderSafe(MDABorderIdx);
-
-      DBG_PRINT(std::cout << "CGAPxClk=" << CGAPxClk << "\n";)
-      DBG_PRINT(std::cout << "EGAPxClk=" << EGAPxClk << "\n";)
-      DBG_PRINT(std::cout << "MDAPxClk=" << MDAPxClk << "\n";)
-      DBG_PRINT(std::cout << "ManualTTL Enabled=" << ManualTTLEnabled << "\n";)
-      DBG_PRINT(std::cout << "ManualTTL Mode=" << modeToStr(ManualTTL.Mode)
-                          << "\n";)
-      DBG_PRINT(std::cout << "ManualTTL H Visible=" << ManualTTL.H_Visible
-                          << "\n";)
-      DBG_PRINT(std::cout << "ManualTTL V Visible=" << ManualTTL.V_Visible
-                          << "\n";)
-      DBG_PRINT(std::cout << "XBorderAUTO=" << XBorderAUTO << "\n";)
-      DBG_PRINT(std::cout << "ManualTTL H BackPorch=" << ManualTTL.H_BackPorch
-                          << "\n";)
-      DBG_PRINT(std::cout << "YBorderAUTO=" << YBorderAUTO << "\n";)
-      DBG_PRINT(std::cout << "ManualTTL V BackPorch=" << ManualTTL.V_BackPorch
-                          << "\n";)
+      ProfileBankOpt = (uint32_t)Flash.read(ProfileBankIdx);
+      readConfigFromFlash();
     } else {
       DBG_PRINT(std::cout << "Flash not valid!\n";);
     }
@@ -763,8 +763,10 @@ void TTLReader::switchPio() {
   }
   }
 
-  if (!haveBorderFromFlash())
-    AutoAdjust.forceStart(/*AlwaysON=*/false);
+  if (!haveBorderFromFlash()) {
+    DBG_PRINT(std::cout << "No borders from flash! AutoAdjust.forceStart()\n";)
+    AutoAdjust.forceStart();
+  }
   Buff.clear();
 }
 
@@ -866,42 +868,56 @@ static void legalizeManualTTL(TTLDescrReduced &ManualTTL) {
       std::clamp(ManualTTL.H_Visible, MANUAL_TTL_HORIZ_MIN, HorizMax);
 }
 
-void TTLReader::saveToFlash() {
+void TTLReader::saveToFlash(bool OnlyProfileBank, bool AllProfiles) {
   DBG_PRINT(std::cout << "Saving to flash...\n";)
-  std::vector<int> FlashValues;
-  FlashValues.resize((int)MaxFlashIdx);
-  FlashValues[CGAPxClkIdx] = CGAPxClk;
-  FlashValues[CGASamplingOffsetIdx] = CGASamplingOffset;
-  FlashValues[EGAPxClkIdx] = EGAPxClk;
-  FlashValues[EGASamplingOffsetIdx] = EGASamplingOffset;
-  FlashValues[MDAPxClkIdx] = MDAPxClk;
-  FlashValues[MDASamplingOffsetIdx] = MDASamplingOffset;
-  FlashValues[CGABorderIdx] =
-      CGABorderOpt ? CGABorderOpt->getUint32() : InvalidBorder;
-  FlashValues[EGABorderIdx] =
-      EGABorderOpt ? EGABorderOpt->getUint32() : InvalidBorder;
-  FlashValues[MDABorderIdx] =
-      MDABorderOpt ? MDABorderOpt->getUint32() : InvalidBorder;
-  FlashValues[ManualTTL_EnabledIdx] = ManualTTLEnabled;
-  FlashValues[ManualTTL_ModeIdx] =
-      ManualTTLEnabled ? getTTLIdx(ManualTTL.Mode) : 0;
-  FlashValues[ManualTTL_H_VisibleIdx] =
-      ManualTTLEnabled ? ManualTTL.H_Visible : 0;
-  FlashValues[ManualTTL_V_VisibleIdx] =
-      ManualTTLEnabled ? ManualTTL.V_Visible : 0;
+  const int *FlashVec = Flash.getData();
 
-  FlashValues[XBorderAUTOIdx] =
-      ManualTTLEnabled && XBorderAUTO ? XBorderAUTO : 0;
-  FlashValues[ManualTTL_H_BackPorchIdx] =
-      ManualTTLEnabled ? ManualTTL.H_BackPorch : 0;
+  // Fill in the vector with the current values.
+  FlashStorage::DataTy FlashValues;
+  for (int Idx = 0, E = getNumFlashEntries(); Idx != E; ++Idx)
+    FlashValues[Idx] = FlashVec[Idx];
 
-  FlashValues[YBorderAUTOIdx] =
-      ManualTTLEnabled && YBorderAUTO ? YBorderAUTO : 0;
-  FlashValues[ManualTTL_V_BackPorchIdx] =
-      ManualTTLEnabled ? ManualTTL.V_BackPorch : 0;
-  // Legalize just in case.
-  legalizeManualTTL(ManualTTL);
+  // Now override with the ones for the current preset (bank).
+  FlashValues[ProfileBankIdx] = *ProfileBankOpt;
 
+  if (!OnlyProfileBank) {
+    uint32_t FromProfile = AllProfiles ? 0 : *ProfileBankOpt;
+    uint32_t ToProfile = AllProfiles ? NumProfiles : FromProfile + 1;
+    for (uint32_t Profile = FromProfile; Profile < ToProfile; ++Profile) {
+      FlashValues[get(Profile::CGAPxClkIdx, Profile)] = CGAPxClk;
+      FlashValues[get(Profile::CGASamplingOffsetIdx, Profile)] =
+          CGASamplingOffset;
+      FlashValues[get(Profile::EGAPxClkIdx, Profile)] = EGAPxClk;
+      FlashValues[get(Profile::EGASamplingOffsetIdx, Profile)] =
+          EGASamplingOffset;
+      FlashValues[get(Profile::MDAPxClkIdx, Profile)] = MDAPxClk;
+      FlashValues[get(Profile::MDASamplingOffsetIdx, Profile)] =
+          MDASamplingOffset;
+      FlashValues[get(Profile::CGABorderIdx, Profile)] =
+          CGABorderOpt ? CGABorderOpt->getUint32() : InvalidBorder;
+      FlashValues[get(Profile::EGABorderIdx, Profile)] =
+          EGABorderOpt ? EGABorderOpt->getUint32() : InvalidBorder;
+      FlashValues[get(Profile::MDABorderIdx, Profile)] =
+          MDABorderOpt ? MDABorderOpt->getUint32() : InvalidBorder;
+      FlashValues[get(Profile::ManualTTL_EnabledIdx, Profile)] = ManualTTLEnabled;
+      FlashValues[get(Profile::ManualTTL_ModeIdx, Profile)] =
+          ManualTTLEnabled ? getTTLIdx(ManualTTL.Mode) : 0;
+      FlashValues[get(Profile::ManualTTL_H_VisibleIdx, Profile)] =
+          ManualTTLEnabled ? ManualTTL.H_Visible : 0;
+      FlashValues[get(Profile::ManualTTL_V_VisibleIdx, Profile)] =
+          ManualTTLEnabled ? ManualTTL.V_Visible : 0;
+
+      FlashValues[get(Profile::XBorderAUTOIdx, Profile)] =
+          ManualTTLEnabled && XBorderAUTO ? XBorderAUTO : 0;
+      FlashValues[get(Profile::ManualTTL_H_BackPorchIdx, Profile)] =
+          ManualTTLEnabled ? ManualTTL.H_BackPorch : 0;
+
+      FlashValues[get(Profile::YBorderAUTOIdx, Profile)] =
+          ManualTTLEnabled && YBorderAUTO ? YBorderAUTO : 0;
+      FlashValues[get(Profile::ManualTTL_V_BackPorchIdx, Profile)] =
+          ManualTTLEnabled ? ManualTTL.V_BackPorch : 0;
+    }
+  }
   Flash.write(FlashValues);
   DBG_PRINT(std::cout << "DONE!\n";)
 }
@@ -978,6 +994,7 @@ bool TTLReader::manualTTLMode() {
   }
   if (ManualTTLExitTime &&
       to_ms_since_boot(FrameEnd) > to_ms_since_boot(*ManualTTLExitTime)) {
+    DBG_PRINT(std::cout << "Manual TTL before saveToFlash()\n";)
     saveToFlash();
     DBG_PRINT(std::cout << "MANUAL TTL SAVED TO FLASH!\n";)
     displayTxt("MANUAL TTL SAVED TO FLASH", MANUAL_TTL_DISPLAY_DONE_MS);
@@ -1198,6 +1215,34 @@ void TTLReader::displayTTLInfo() {
   Buff.displayPage(SS.str());
 }
 
+void TTLReader::showProfile() {
+  DBG_PRINT(std::cerr << "PROFILE " << *ProfileBankOpt << "\n";)
+  static constexpr const int BuffSz = 20;
+  char Buff[BuffSz];
+  snprintf(Buff, BuffSz, "PROFILE %lu", *ProfileBankOpt);
+  displayTxt(Buff, PROFILE_DISPLAY_MS);
+}
+
+void TTLReader::changeProfile(bool Next) {
+  DBG_PRINT(std::cerr << "changeProfile()\n";)
+  if (Next) {
+    *ProfileBankOpt += 1;
+    if (ProfileBankOpt == NumProfiles)
+      ProfileBankOpt = 0;
+  } else {
+    if (*ProfileBankOpt == 0)
+      ProfileBankOpt = NumProfiles - 1;
+    else
+      *ProfileBankOpt -= 1;
+  }
+  showProfile();
+  readConfigFromFlash();
+
+  getDividerAutomatically();
+  switchPio();
+  checkAndUpdateMode();
+}
+
 void __not_in_flash_func(TTLReader::handleButtons)() {
   AutoAdjustBtn.tick();
   PxClkBtn.tick();
@@ -1256,7 +1301,46 @@ void __not_in_flash_func(TTLReader::handleButtons)() {
         displayTxt("NO TTL SIGNAL ", NO_TTL_SIGNAL_MS);
         return;
       }
-      AutoAdjust.runAlwaysAutoAdjust();
+      LastProfileBank = *ProfileBankOpt;
+      showProfile();
+      UsrAction = UserAction::ChangeProfile;
+      ChangeProfileEndTime = delayed_by_ms(FrameEnd, PROFILE_DISPLAY_MS);
+      return;
+    }
+  }
+
+  if (UsrAction == UserAction::ChangeProfile) {
+    if (BtnA == ButtonState::Release) {
+      if (NoSignal) {
+        displayTxt("NO TTL SIGNAL", NO_TTL_SIGNAL_MS);
+        return;
+      }
+      changeProfile(/*Next=*/true);
+      showProfile();
+      ChangeProfileEndTime = delayed_by_ms(FrameEnd, PROFILE_DISPLAY_MS);
+      return;
+    }
+    if (BtnB == ButtonState::Release) {
+      if (NoSignal) {
+        displayTxt("NO TTL SIGNAL", NO_TTL_SIGNAL_MS);
+        return;
+      }
+      changeProfile(/*Next=*/false);
+      showProfile();
+      ChangeProfileEndTime = delayed_by_ms(FrameEnd, PROFILE_DISPLAY_MS);
+      return;
+    }
+    if (to_ms_since_boot(FrameEnd) > to_ms_since_boot(*ChangeProfileEndTime)) {
+      DBG_PRINT(std::cout << "ChangeProfile END!\n";)
+      if (*ProfileBankOpt != LastProfileBank) {
+        DBG_PRINT(std::cout << "Saving new preset " << *ProfileBankOpt
+                            << " to flash\n";)
+        saveToFlash(/*OnlyProfileBank=*/true);
+      } else {
+        DBG_PRINT(std::cout << "Profile didn't change\n";)
+      }
+      ChangeProfileEndTime = std::nullopt;
+      UsrAction = UserAction::None;
       return;
     }
   }
@@ -1310,6 +1394,7 @@ void __not_in_flash_func(TTLReader::handleButtons)() {
         to_ms_since_boot(FrameEnd) > to_ms_since_boot(*PxClkEndTime)) {
       PxClkEndTime = std::nullopt;
       if (ChangedPxClk) {
+        DBG_PRINT(std::cout << "Before saveToFlash() in ChangePxClk\n";)
         saveToFlash();
         displayTxt("PxCLK SAVED TO FLASH ", PX_CLK_EXIT_DISPLAY_MS);
       } else {
@@ -1476,8 +1561,10 @@ void TTLReader::runForEver() {
     LastNoSignal = NoSignal;
 
     bool BordersAdjusted = AutoAdjust.frameTick(TimingsTTL);
-    if (BordersAdjusted && !AutoAdjust.isAlwaysON())
+    if (BordersAdjusted) {
+      DBG_PRINT(std::cout << "Borders adjusted!\n";)
       saveToFlash();
+    }
 
     auto LastFrameEnd = FrameEnd;
     FrameEnd = get_absolute_time();

@@ -56,6 +56,7 @@ static constexpr const int MANUAL_TTL_MAX_XBORDER = 400;
 static constexpr const int MANUAL_TTL_MAX_YBORDER = 200;
 
 static constexpr const uint32_t NO_TTL_SIGNAL_MS = 800;
+static constexpr const uint32_t PROFILE_DISPLAY_MS = 4000;
 static constexpr const uint32_t UNKNOWN_MODE_MS = 2000;
 /// Limit the number of times we will show the "unknown mode" message.
 static constexpr const uint32_t UNKNOWN_MODE_SHOW_MSG_MAX_COUNT = 3;

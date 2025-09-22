@@ -64,10 +64,9 @@ Sampling offset 3:         |     |     |     |
 
 ## Centering the image
 - Push the `AUTO ADJUST` button. This works best when the image shown is full from border to border.
-- Long-push the `AUTO ADJUST` button turns on continuous auto-centering mode. This may be useful occasionally, but won't work well if the image is mostly blank as it may keep re-adjusting the image.
 
 ## Print TTL Info (since v0.2)
-Long-pressing the PIXEL CLOCK button will show a screen with information about the TTL signal.
+Long-pressing the `PIXEL CLOCK` button will show a screen with information about the TTL signal.
 Note: this is not updated in real-time.
 
 You can exit the screen by pushing any button.
@@ -102,6 +101,13 @@ Occasionally the user may save to flash some configuration that makes the MCE Bl
 In this case you can reset to defaults by pressing both buttons while powering on the device.
 Upon a successful reset you will see the LED blinking fast for about 2 seconds.
 You can release the buttons after that and the MCE Blaster will start with the default settings.
+
+## Profiles (since v0.3 beta13)
+The MCE Blaster supports a number of profiles, which helps when swapping video cards.
+The settings for one card can be at Profile 0, the settings for another card can be at Profile 1 etc.
+The default profile is Profile 0.
+
+Changing profiles is as easy as long-pressing the `AUTO ADJUST` button and cycling through the profiles with either the `AUTO ADJUST` or the `PIXEL CLOCK` button.
 
 # How it works
 ## Overview

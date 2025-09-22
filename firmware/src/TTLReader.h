@@ -66,7 +66,6 @@ class AutoAdjustBorder {
   enum class State {
     Off,
     SingleON,
-    AlwaysON,
   };
 
   State Enabled = State::Off;
@@ -94,14 +93,12 @@ public:
         YBorder(YBorder), CGABorderOpt(CGABorderOpt),
         EGABorderOpt(EGABorderOpt), MDABorderOpt(MDABorderOpt), Flash(Flash),
         TTLR(TTLR) {}
-  void forceStart(bool AlwaysON);
+  void forceStart();
   void runAutoAdjust();
-  void runAlwaysAutoAdjust();
   void collect(PIO Pio, uint32_t SM, uint32_t ModeBorderCounter, uint32_t Line,
                TTL Mode);
   /// Gets called on every frame. Returns if borders were applied.
   bool frameTick(const TTLDescr &TimingsTTL);
-  bool isAlwaysON() const { return Enabled == State::AlwaysON; }
   /// Used to set the borders when stored in flash.
   void setBorder(const BorderXY &XY);
 };
@@ -140,7 +137,9 @@ private:
   ClkDivider MDAClkDiv{1, 66};
 
   // Flash entries
-  enum {
+  static constexpr const int ProfileBankIdx = 0;
+  static constexpr const int NumProfiles = 3;
+  enum class Profile {
     CGAPxClkIdx = 0,
     CGASamplingOffsetIdx,
     EGAPxClkIdx,
@@ -160,7 +159,31 @@ private:
     ManualTTL_V_BackPorchIdx,
     MaxFlashIdx,
   };
+
+  // Check that the data fits in flash.
+  static_assert((NumProfiles * (int)Profile::MaxFlashIdx + 1) *
+                        sizeof(FlashStorage::DataTy::ValTy) <
+                    FlashStorage::DataTy::size_in_bytes(),
+                "Data won't fit in flash! Increase BytesToWrite!");
+
+  uint32_t get(Profile Idx,
+               std::optional<uint32_t> ForceProfile = std::nullopt) const {
+    assert(ProfileBankOpt && "Make sure we have read ProfileBank from flash!");
+    uint32_t Profile = ForceProfile ? *ForceProfile : *ProfileBankOpt;
+    auto RetIdx = /*ProfileIdx*/ 1 + (uint32_t)Idx +
+                  Profile * (uint32_t)Profile::MaxFlashIdx;
+    return RetIdx;
+  }
+  uint32_t getNumFlashEntries() const {
+    assert(ProfileBankOpt && "Make sure we have read ProfileBank from flash!");
+    return /*ProfileBankIdx*/ 1 + NumProfiles * (uint32_t)Profile::MaxFlashIdx;
+  }
   static constexpr const uint32_t InvalidBorder = 0xffffffff;
+
+  // We are using an 'optional' here to make sure we initialize it.
+  std::optional<uint32_t> ProfileBankOpt = 0;
+  // This avoids writing to flash if we ended up in the same preset.
+  uint32_t LastProfileBank = 0;
 
   uint32_t CGAPxClk = PresetTimingsTTL[CGA_640x200_60Hz].PxClk;
   uint32_t EGAPxClk = PresetTimingsTTL[EGA_640x350_60Hz].PxClk;
@@ -190,6 +213,7 @@ private:
     PxClkMode_Modify,
     TTLInfo,
     ManualTTL,
+    ChangeProfile,
   };
   // We use this action state variable for all actions (like, manualTTL,
   // auto-adjust, pxClock) to make sure we are not servicing more than one
@@ -205,6 +229,8 @@ private:
   /// TTL mode forced by the user. This disables auto-detection.
   TTLDescrReduced ManualTTL;
   bool ManualTTLEnabled = false;
+
+  std::optional<absolute_time_t> ChangeProfileEndTime;
 
   static constexpr const uint32_t TimingNOPsCGA = 7;
   static constexpr const uint32_t TimingNOPsMDA = 7;
@@ -233,7 +259,7 @@ private:
   int HSyncPolaritySM;
 
   /// Save settings to flash.
-  void saveToFlash();
+  void saveToFlash(bool OnlyProfileBank = false, bool AllProfiles = false);
 
   void toggleManualTTL();
   void printManualTTLMenu();
@@ -264,6 +290,8 @@ private:
   void checkAndUpdateMode();
   /// Display a screen with information about the TTL signal.
   void displayTTLInfo();
+  void showProfile();
+  void changeProfile(bool Next);
   /// Take actions based on button state.
   void handleButtons();
   /// Calculates the polarity for both V and H sync based on the PIO values and
@@ -276,6 +304,8 @@ private:
 
   template <TTL M, bool DiscardLineData> bool readLinePerMode(uint32_t Line);
   template <TTL M> void readFrame(uint32_t &Line);
+
+  void readConfigFromFlash();
 
 public:
   DisplayBuffer &getBuff() { return Buff; }

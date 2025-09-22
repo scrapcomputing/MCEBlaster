@@ -5,43 +5,38 @@
 
 #include "Flash.h"
 #include "Debug.h"
+#include <cstring>
 #include <iostream>
 #include <pico/multicore.h>
 
-std::vector<int> FlashStorage::getDataVec(const std::vector<int> &Values) {
-  DBG_PRINT(std::cout << __FUNCTION__ << " Values.size()=" << Values.size()
-                      << "\n";)
-  std::vector<int> TmpDataVec;
-  int NumEntries = BytesToWrite / sizeof(TmpDataVec[0]);
-  TmpDataVec.reserve(NumEntries);
-  TmpDataVec.reserve(MagicNumber.size() + 2 + Values.size());
+FlashStorage::DataTy::DataTy() {
+  std::fill(Elements.begin(), Elements.end(), 0);
   // 1. Magic number.
-  TmpDataVec.insert(TmpDataVec.end(), MagicNumber.begin(), MagicNumber.end());
+  int Idx = MagicNumberIdx;
+  for (int M : MagicNumber)
+    Elements[Idx++] = M;
   // 2. Revision.
-  TmpDataVec.push_back(REVISION_MAJOR);
-  TmpDataVec.push_back(REVISION_MINOR);
-  // 3. Actual values.
-  TmpDataVec.insert(TmpDataVec.end(), Values.begin(), Values.end());
-  // // 5. Fill the rest with zeros.
-  // for (int Cnt = TmpDataVec.size(); Cnt != NumEntries; ++Cnt)
-  //   TmpDataVec.push_back(0);
-  return TmpDataVec;
+  Elements[RevisionMajorIdx] = REVISION_MAJOR;
+  Elements[RevisionMinorIdx] = REVISION_MINOR;
+}
+
+void FlashStorage::DataTy::dump() const {
+  for (uint32_t Idx = 0, E = ActualDataStartIdx; Idx < E; ++Idx)
+    std::cout << Idx << " : " << Elements[Idx] << "\n";
+  std::cout << "-- Actual Data --\n";
+  for (uint32_t Idx = ActualDataStartIdx, E = Elements.size(); Idx < E; ++Idx)
+    std::cout << Idx << " : " << Elements[Idx] << "\n";
 }
 
 FlashStorage::FlashStorage() {
-  FlashArray =
-      (const int *)(XIP_BASE + WriteBaseOffset + /*Revision:*/ 2 * sizeof(int) +
-                    /*MagicNumber:*/ MagicNumber.size() *
-                        sizeof(MagicNumber[0]));
+  FlashArray = (const int *)(XIP_BASE + WriteBaseOffset);
 }
 
-void FlashStorage::write(const std::vector<int> &Values) {
+void FlashStorage::write(const DataTy &DataVec) {
   DBG_PRINT(std::cout << "WriteBaseOffset=" << WriteBaseOffset
                       << " BytesToWrite=" << BytesToWrite << "\n";)
-  DBG_PRINT(std::cout << "DataVec:\n";)
-  auto DataVec = getDataVec(Values);
-  DBG_PRINT(for (int Val : DataVec) std::cout << Val << "\n";)
-
+  DBG_PRINT(std::cout << "Written values:\n";)
+  DBG_PRINT(DataVec.dump();)
   DBG_PRINT(std::cout << "Before save and disable interrupts()\n";)
   // When writing to flash we need to stop the other core from running code.
   // Please note that the other core shoudl: multicore_lockout_victim_init()
@@ -49,8 +44,8 @@ void FlashStorage::write(const std::vector<int> &Values) {
   // We also need to disable interrupts.
   uint32_t SvInterrupts = save_and_disable_interrupts();
   flash_range_erase(EraseBaseOffset, BytesToErase);
-  flash_range_program(WriteBaseOffset, (const uint8_t *)DataVec.data(),
-                      BytesToWrite);
+  flash_range_program(WriteBaseOffset, (const uint8_t *)DataVec.raw_get(),
+                      DataVec.size_in_bytes());
   // Restore interrupts.
   restore_interrupts(SvInterrupts);
   // Resume execution on other core.
@@ -58,20 +53,19 @@ void FlashStorage::write(const std::vector<int> &Values) {
   DBG_PRINT(std::cout << "After interrupts\n";)
 }
 
-std::vector<int> FlashStorage::readMagicNumber() const {
-  std::vector<int> MagicNum;
-  int MagicNumberSz = (int)MagicNumber.size();
-  for (int Idx = 0; Idx != MagicNumberSz; ++Idx)
-    MagicNum.push_back(FlashArray[Idx - MagicNumberSz - 2]);
+FlashStorage::MagicNumberTy FlashStorage::readMagicNumber() const {
+  MagicNumberTy ReadMN;
+  for (unsigned Idx = 0, E = ReadMN.size(); Idx != E; ++Idx)
+    ReadMN[Idx] = FlashArray[MagicNumberIdx + Idx];
 
   DBG_PRINT(std::cout << "Read magic number: ";)
-  DBG_PRINT(for (int V : MagicNum) std::cout << V << " ";)
+  DBG_PRINT(for (int V : ReadMN) std::cout << V << " ";)
   DBG_PRINT(std::cout << "\n";)
-  return MagicNum;
+  return ReadMN;
 }
 
 std::pair<int, int> FlashStorage::readRevision() const {
-  return {FlashArray[-2], FlashArray[-1]};
+  return {FlashArray[RevisionMajorIdx], FlashArray[RevisionMinorIdx]};
 }
 
 bool FlashStorage::valid() const {
