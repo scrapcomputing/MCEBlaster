@@ -8,6 +8,7 @@
 
 #include "Debug.h"
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 
@@ -95,6 +96,49 @@ struct Utils {
     DBG_PRINT(std::cerr << Msg << "\n";)
     exit(1);
   }
+
+
+  template <typename T, unsigned Sz>
+  class FixedVector {
+    std::array<T, Sz> Data;
+    unsigned DataSz = 0;
+  public:
+    FixedVector() = default;
+    void clear() { DataSz = 0; }
+    unsigned size() const { return DataSz; }
+    void push_back(const T &V) {
+      assert(DataSz < Sz && "Out of bounds!");
+      Data[DataSz++] = V;
+    }
+    T &operator[](unsigned Idx) {
+      assert(Idx < Sz && "Out of bounds!");
+      return Data[Idx];
+    }
+    const T& operator[](unsigned Idx) const {
+      assert(Idx < Sz && "Out of bounds!");
+      return Data[Idx];
+    }
+    class iterator {
+      unsigned Idx = 0;
+      FixedVector &Vec;
+
+    public:
+      iterator(unsigned Idx, FixedVector &Vec) : Idx(Idx), Vec(Vec) {}
+      iterator &operator++() {
+        ++Idx;
+        return *this;
+      }
+      T &operator*() { return Vec[Idx]; }
+      const T &operator*() const { return Vec[Idx]; }
+      bool operator==(const iterator &Other) const {
+        assert(&Vec == &Other.Vec && "Comparing different vectors!");
+        return Idx == Other.Idx;
+      }
+      bool operator!=(const iterator &Other) const { return !(*this == Other); }
+    };
+    iterator begin() { return iterator(0, *this); }
+    iterator end() { return iterator(Sz, *this); }
+  };
 };
 
 #endif // __SRC_UTILS_H__

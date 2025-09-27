@@ -273,7 +273,7 @@ private:
   bool NoSignal = true;
   bool LastNoSignal = false;
 
-  std::vector<std::pair<PIO, uint>> UsedSMs;
+  Utils::FixedVector<std::pair<PIO, uint>, 8> UsedSMs;
   /// \Reutrns an unused SM but also pushes it into `UnusedSMs` for unclaiming
   /// them before a restart of the TTLReader.
   int claimUnusedSMSafe(PIO Pio);
