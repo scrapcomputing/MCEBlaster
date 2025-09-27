@@ -6,10 +6,10 @@
 #ifndef __SRC_UTILS_H__
 #define __SRC_UTILS_H__
 
+#include "Debug.h"
+#include <array>
 #include <cstdint>
 #include <iostream>
-#include <vector>
-#include "Debug.h"
 
 #define DUMP_METHOD __attribute__((noinline)) __attribute__((__used__))
 
@@ -64,11 +64,10 @@ struct Utils {
   /// Holds the last several entries.
   /// Can return the mean.
   template <typename T, unsigned Sz, T InitVal> class Buffer {
-    std::vector<T> Vec;
+    std::array<T, Sz> Vec;
 
   public:
     Buffer() {
-      Vec.resize(Sz);
       for (unsigned Cnt = 0; Cnt != Sz; ++Cnt)
         Vec[Cnt] = InitVal;
     }
