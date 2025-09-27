@@ -48,7 +48,8 @@ uint PioProgramLoader::loadPIOProgram(PIO Pio, uint SM,
   return Offset;
 }
 
-void PioProgramLoader::unloadAllPio(PIO Pio, const std::vector<uint> &SMs) {
+void PioProgramLoader::unloadAllPio(PIO Pio,
+                                    const std::initializer_list<uint> SMs) {
   critical_section_enter_blocking(&LoadPIOProgramLock);
   DBG_PRINT(std::cout << "unloadAllPio:\n";)
   for (uint SM : SMs) {

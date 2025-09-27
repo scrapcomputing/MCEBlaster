@@ -10,6 +10,7 @@
 #include "hardware/pio.h"
 #include "pico/critical_section.h"
 #include <functional>
+#include <initializer_list>
 #include <iostream>
 #include <map>
 
@@ -24,7 +25,7 @@ public:
   /// \Returns the offset of the loaded program.
   uint loadPIOProgram(PIO Pio, uint SM, const pio_program_t *Program,
                       std::function<void(PIO, uint, uint)> Fn);
-  void unloadAllPio(PIO Pio, const std::vector<uint> &SMs);
+  void unloadAllPio(PIO Pio, std::initializer_list<uint> SMs);
 };
 
 #endif // __PIOPROGRAMLOADER_H__
