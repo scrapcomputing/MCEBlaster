@@ -14,7 +14,6 @@
 #include "hardware/dma.h"
 #include <iostream>
 #include <pico/stdlib.h>
-#include <vector>
 
 class DisplayBuffer {
   friend class XPM2;

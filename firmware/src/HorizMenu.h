@@ -6,13 +6,13 @@
 #ifndef __HORIZMENU_H__
 #define __HORIZMENU_H__
 
-#include <vector>
+#include <array>
 #include <string>
 
 class TTLReader;
 
 /// A single-line horizontal menu that uses TTLReader::displayTxt().
-class HorizMenu {
+template <int MaxMenuItems> class HorizMenu {
   struct MenuItem {
     bool Enabled = false;
     std::string Prefix;
@@ -23,11 +23,12 @@ class HorizMenu {
   };
 
   TTLReader &TTLR;
-  std::vector<MenuItem> MenuItems;
+  std::array<MenuItem, MaxMenuItems> MenuItems;
+  int NumMenuItems = 0;
 
 public:
   HorizMenu(TTLReader &TTLR) : TTLR(TTLR) {}
-  void clearItems() { MenuItems.clear(); }
+  void clearItems() { NumMenuItems = 0; }
   void addMenuItem(int MenuIdx, bool Enabled, const std::string &Prefix,
                    const std::string &Txt);
   void display(int Selection, int DisplayTime);

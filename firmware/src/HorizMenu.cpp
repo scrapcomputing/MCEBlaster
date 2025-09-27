@@ -6,16 +6,19 @@
 #include "HorizMenu.h"
 #include "TTLReader.h"
 
-void HorizMenu::addMenuItem(int MenuIdx, bool Enabled,
-                            const std::string &Prefix, const std::string &Txt) {
-  if (MenuIdx >= (int)MenuItems.size())
-    MenuItems.resize(MenuIdx + 1);
+template <int MaxMenuItems>
+void HorizMenu<MaxMenuItems>::addMenuItem(int MenuIdx, bool Enabled,
+                                          const std::string &Prefix,
+                                          const std::string &Txt) {
+  if (MenuIdx >= NumMenuItems)
+    NumMenuItems = MenuIdx + 1;
   MenuItems[MenuIdx] = MenuItem(Enabled, Prefix, Txt);
 }
 
-void HorizMenu::display(int Selection, int DisplayTime) {
+template <int MaxMenuItems>
+void HorizMenu<MaxMenuItems>::display(int Selection, int DisplayTime) {
   std::string Line;
-  for (int Idx = 0, E = MenuItems.size(); Idx != E; ++Idx) {
+  for (int Idx = 0, E = NumMenuItems; Idx != E; ++Idx) {
     const MenuItem &MItem = MenuItems[Idx];
     if (!MItem.Enabled) {
       continue;
@@ -27,14 +30,19 @@ void HorizMenu::display(int Selection, int DisplayTime) {
   TTLR.displayTxt(Line, DisplayTime);
 }
 
-void HorizMenu::incrSelection(int &Selection) {
+template <int MaxMenuItems>
+void HorizMenu<MaxMenuItems>::incrSelection(int &Selection) {
   do {
-    Selection = (Selection + 1) % MenuItems.size();
+    Selection = (Selection + 1) % NumMenuItems;
   } while (!MenuItems[Selection].Enabled);
 }
 
-void HorizMenu::decrSelection(int &Selection) {
+template <int MaxMenuItems>
+void HorizMenu<MaxMenuItems>::decrSelection(int &Selection) {
   do {
-    Selection = Selection == 0 ? (int)MenuItems.size() - 1 : Selection - 1;
+    Selection = Selection == 0 ? NumMenuItems - 1 : Selection - 1;
   } while (!MenuItems[Selection].Enabled);
 }
+
+// Instantiation
+template class HorizMenu<TTLReader::ManualTTLMenu_NumMenuItems>;

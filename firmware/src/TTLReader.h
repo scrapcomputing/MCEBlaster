@@ -333,7 +333,7 @@ public:
   static constexpr const int ManualTTLMenu_YBorder_ItemIdx = 7;
   static constexpr const int ManualTTLMenu_NumMenuItems = 8;
 
-  HorizMenu ManualTTLMenu;
+  HorizMenu<ManualTTLMenu_NumMenuItems> ManualTTLMenu;
 
   TTLReader(PioProgramLoader &PioLoader, Pico &Pi, FlashStorage &Flash,
             DisplayBuffer &Buff, PIO VSyncPolarityPio, uint VSyncPolaritySM,
