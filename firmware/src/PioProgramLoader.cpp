@@ -27,19 +27,25 @@ uint PioProgramLoader::loadPIOProgram(PIO Pio, uint SM,
   while (!pio_sm_is_rx_fifo_empty(Pio, SM))
     pio_sm_get_blocking(Pio, SM);
 
-  auto It = LoadedPrograms.find(std::make_pair(Pio, SM));
+  std::pair<PIO, uint> PioSMPair(Pio, SM);
+  auto It = std::find_if(
+      LoadedPrograms.begin(), LoadedPrograms.end(),
+      [&PioSMPair](const auto &Pair) { return Pair.Key == PioSMPair; });
   if (It != LoadedPrograms.end()) {
-    auto [CurrProgram, Offset] = It->second;
+    auto [CurrProgram, Offset] = (*It).Value;
     DBG_PRINT(std::cout << "loadPIO: Removing " << getPioStr(Pio) << " program "
                         << CurrProgram << "...\n";)
     pio_remove_program(Pio, CurrProgram, Offset);
+    LoadedPrograms.erase(It);
   }
   DBG_PRINT(std::cout << "loadPIO: Adding " << getPioStr(Pio) << " program "
                       << Program << "...\n";)
   uint Offset = pio_add_program(Pio, Program);
   DBG_PRINT(std::cout << "loadPIO: Offset=" << Offset << "\n";)
   Fn(Pio, SM, Offset);
-  LoadedPrograms[std::make_pair(Pio, SM)] = {Program, Offset};
+  DBG_PRINT(std::cout << "LoadedPrograms.size() = " << LoadedPrograms.size()
+                      << "\n";)
+  LoadedPrograms.push_back({PioSMPair, {Program, Offset}});
   pio_sm_set_enabled(Pio, SM, true);
             DBG_PRINT(std::cout << "loadPIO: Enabled " << getPioStr(Pio)
                       << " SM=" << SM << "\n";)
@@ -60,9 +66,12 @@ void PioProgramLoader::unloadAllPio(PIO Pio,
     while (!pio_sm_is_rx_fifo_empty(Pio, SM))
       pio_sm_get_blocking(Pio, SM);
 
-    auto It = LoadedPrograms.find(std::make_pair(Pio, SM));
+    auto PioSMPair = std::make_pair(Pio, SM);
+    auto It = std::find_if(
+        LoadedPrograms.begin(), LoadedPrograms.end(),
+        [&PioSMPair](const auto &Pair) { return Pair.Key == PioSMPair; });
     if (It != LoadedPrograms.end()) {
-      auto [CurrProgram, Offset] = It->second;
+      auto [CurrProgram, Offset] = (*It).Value;
       DBG_PRINT(std::cout << "unloadAllPio: Removing PIO program "
                           << CurrProgram << "...\n";)
       pio_remove_program(Pio, CurrProgram, Offset);

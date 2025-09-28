@@ -11,6 +11,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
+#include <iterator>
 
 #define DUMP_METHOD __attribute__((noinline)) __attribute__((__used__))
 
@@ -102,12 +103,13 @@ struct Utils {
   class FixedVector {
     std::array<T, Sz> Data;
     unsigned DataSz = 0;
+
   public:
     FixedVector() = default;
     void clear() { DataSz = 0; }
     unsigned size() const { return DataSz; }
     void push_back(const T &V) {
-      assert(DataSz < Sz && "Out of bounds!");
+      assert(DataSz + 1 < Sz && "Out of bounds!");
       Data[DataSz++] = V;
     }
     T &operator[](unsigned Idx) {
@@ -123,21 +125,38 @@ struct Utils {
       FixedVector &Vec;
 
     public:
+      using difference_type = std::ptrdiff_t;
+      using value_type = T;
+      using pointer = T *;
+      using reference = T &;
+      using iterator_category = std::input_iterator_tag;
       iterator(unsigned Idx, FixedVector &Vec) : Idx(Idx), Vec(Vec) {}
       iterator &operator++() {
         ++Idx;
         return *this;
       }
-      T &operator*() { return Vec[Idx]; }
-      const T &operator*() const { return Vec[Idx]; }
+      T &operator*() {
+        assert(Idx < Sz && "Already at end!");
+        return Vec[Idx];
+      }
+      const T &operator*() const {
+        assert(Idx < Sz && "Already at end!");
+        return Vec[Idx];
+      }
       bool operator==(const iterator &Other) const {
         assert(&Vec == &Other.Vec && "Comparing different vectors!");
         return Idx == Other.Idx;
       }
       bool operator!=(const iterator &Other) const { return !(*this == Other); }
     };
+    void erase(iterator &It) {
+      assert(It != end() && "Out of bounds!");
+      assert(DataSz > 0 && "Already empty!");
+      std::swap(*It, Data[DataSz - 1]);
+      --DataSz;
+    }
     iterator begin() { return iterator(0, *this); }
-    iterator end() { return iterator(Sz, *this); }
+    iterator end() { return iterator(DataSz, *this); }
   };
 };
 

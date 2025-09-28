@@ -7,16 +7,19 @@
 #define __PIOPROGRAMLOADER_H__
 
 #include "Debug.h"
+#include "Utils.h"
 #include "hardware/pio.h"
 #include "pico/critical_section.h"
 #include <functional>
 #include <initializer_list>
 #include <iostream>
-#include <map>
 
 class PioProgramLoader {
-  std::map<std::pair<PIO, uint>, std::pair<const pio_program_t *, uint>>
-      LoadedPrograms;
+  struct KeyValuePair {
+    std::pair<PIO, uint> Key;
+    std::pair<const pio_program_t *, uint> Value;
+  };
+  Utils::FixedVector<KeyValuePair, 8> LoadedPrograms;
   critical_section LoadPIOProgramLock;
 
 public:
