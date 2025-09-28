@@ -27,17 +27,17 @@ void DisplayBuffer::noSignal() {
   SplashXPM.show(*this, *TimingsTTL, 0, 0, Zoom);
 
   // Print the version at the bottom of the screen.
-  std::string Version = std::string("v") +
-                        std::to_string(REVISION_MAJOR) + "." +
-                        std::to_string(REVISION_MINOR);
+  char Version[8];
+  snprintf(Version, 8, "v%d.%d", REVISION_MAJOR, REVISION_MINOR);
   displayTxt(Version, 0, /*Center=*/false);
   // Special case for MDA because we print 2 pixels per byte.
   int DisplayWidth = TimingsTTL->Mode == TTL::MDA ? TimingsTTL->H_Visible / 2
                                                   : TimingsTTL->H_Visible;
+  int VersionLen = strlen(Version);
   for (int Line = 0; Line != BMapHeight; ++Line) {
     memcpy(&Buffer[TimingsTTL->V_Visible - 2 * TxtBuffY + Line]
-                  [DisplayWidth - (Version.size() * 2) * BMapWidth],
-           &TxtBuffer[Line][0], Version.size() * BMapWidth);
+                  [DisplayWidth - (VersionLen * 2) * BMapWidth],
+           &TxtBuffer[Line][0], VersionLen * BMapWidth);
   }
 }
 
@@ -147,23 +147,24 @@ void DisplayBuffer::displayPage(const Utils::StaticString<640> &PageTxt, bool Ce
   DBG_PRINT(std::cout << __FUNCTION__ << "----END----\n";)
 }
 
-void DisplayBuffer::displayTxt(const std::string &Line, int X, bool Center) {
+void DisplayBuffer::displayTxt(const char *Line, int X, bool Center) {
   DBG_PRINT(std::cout << "displayTxt(" << Line << ")\n";)
   clearTxtBuffer();
 
   static constexpr const int ZoomXLevel = 1;
   static constexpr const int ZoomYLevel = 1;
 
+  int LineSz = strlen(Line);
   int ActualX =
-      Center
-          ? (TimingsTTL->H_Visible - Line.size() * BMapWidth * ZoomXLevel) / 2
-          : X;
+      Center ? (TimingsTTL->H_Visible - LineSz * BMapWidth * ZoomXLevel) / 2
+             : X;
   int ActualY = 0;
   DBG_PRINT(std::cout << "displayTxt:>>" << Line << "<< (X=" << ActualX
                       << ",Y=" << ActualY << ")\n";)
   uint32_t FgColor = TimingsTTL->Mode == TTL::MDA ? White : BrightCyan;
   uint32_t BgColor = Black;
-  for (char C : Line) {
+  for (int Idx = 0; Idx != LineSz; ++Idx) {
+    char C = Line[Idx];
     displayChar(C, ActualX, ActualY, TxtBuffer, FgColor, BgColor, ZoomXLevel,
                 ZoomYLevel);
     ActualX += BMapWidth * ZoomXLevel;

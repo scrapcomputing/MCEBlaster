@@ -8,8 +8,7 @@
 
 template <int MaxMenuItems>
 void HorizMenu<MaxMenuItems>::addMenuItem(int MenuIdx, bool Enabled,
-                                          const std::string &Prefix,
-                                          const std::string &Txt) {
+                                          const char *Prefix, const char *Txt) {
   if (MenuIdx >= NumMenuItems)
     NumMenuItems = MenuIdx + 1;
   MenuItems[MenuIdx] = MenuItem(Enabled, Prefix, Txt);
@@ -17,7 +16,7 @@ void HorizMenu<MaxMenuItems>::addMenuItem(int MenuIdx, bool Enabled,
 
 template <int MaxMenuItems>
 void HorizMenu<MaxMenuItems>::display(int Selection, int DisplayTime) {
-  std::string Line;
+  Utils::StaticString<80> Line;
   for (int Idx = 0, E = NumMenuItems; Idx != E; ++Idx) {
     const MenuItem &MItem = MenuItems[Idx];
     if (!MItem.Enabled) {
@@ -25,9 +24,9 @@ void HorizMenu<MaxMenuItems>::display(int Selection, int DisplayTime) {
     }
     const char *SelectL = Idx == Selection ? "[" : " ";
     const char *SelectR = Idx == Selection ? "]" : " ";
-    Line += MItem.Prefix + SelectL + MItem.Item + SelectR;
+    Line << MItem.Prefix << SelectL << MItem.Item << SelectR;
   }
-  TTLR.displayTxt(Line.c_str(), DisplayTime);
+  TTLR.displayTxt(Line.get(), DisplayTime);
 }
 
 template <int MaxMenuItems>

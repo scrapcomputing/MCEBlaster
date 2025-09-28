@@ -7,7 +7,6 @@
 #define __HORIZMENU_H__
 
 #include <array>
-#include <string>
 
 class TTLReader;
 
@@ -15,10 +14,10 @@ class TTLReader;
 template <int MaxMenuItems> class HorizMenu {
   struct MenuItem {
     bool Enabled = false;
-    std::string Prefix;
-    std::string Item;
+    const char *Prefix;
+    const char *Item;
     MenuItem() = default;
-    MenuItem(bool Enabled, const std::string &Prefix, const std::string &Item)
+    MenuItem(bool Enabled, const char *Prefix, const char *Item)
         : Enabled(Enabled), Prefix(Prefix), Item(Item) {}
   };
 
@@ -29,8 +28,8 @@ template <int MaxMenuItems> class HorizMenu {
 public:
   HorizMenu(TTLReader &TTLR) : TTLR(TTLR) {}
   void clearItems() { NumMenuItems = 0; }
-  void addMenuItem(int MenuIdx, bool Enabled, const std::string &Prefix,
-                   const std::string &Txt);
+  void addMenuItem(int MenuIdx, bool Enabled, const char *Prefix,
+                   const char *Txt);
   void display(int Selection, int DisplayTime);
   /// Increment selection index, skipping disabled menu items.
   void incrSelection(int &Selection);

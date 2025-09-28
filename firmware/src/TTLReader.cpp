@@ -941,33 +941,40 @@ void TTLReader::printManualTTLMenu() {
   ManualTTLMenu.addMenuItem(ManualTTLMenu_Mode_ItemIdx, ManualTTLEnabled,
                             /*Prefix=*/"", /*Item=*/modeToStr(ManualTTL.Mode));
   // Horizontal
-  ManualTTLMenu.addMenuItem(
-      ManualTTLMenu_Horiz_ItemIdx, ManualTTLEnabled,
-      /*Prefix=*/"", /*Item=*/
-      std::to_string(ManualTTL.H_Visible -
-                     /*XB is an implementation detail, hide it from user*/ XB));
+  static Utils::StaticString<8> H_VisibleSS;
+  H_VisibleSS = ManualTTL.H_Visible -
+                /*XB is an implementation detail, hide it from user*/ XB;
+  ManualTTLMenu.addMenuItem(ManualTTLMenu_Horiz_ItemIdx, ManualTTLEnabled,
+                            /*Prefix=*/"", /*Item=*/
+                            H_VisibleSS.get());
   // Vertical
+  static Utils::StaticString<8> V_VisibleSS;
+  V_VisibleSS = ManualTTL.V_Visible - YB;
   ManualTTLMenu.addMenuItem(ManualTTLMenu_Vert_ItemIdx, ManualTTLEnabled,
                             /*Prefix=*/"x",
-                            /*Item=*/std::to_string(ManualTTL.V_Visible - YB));
+                            /*Item=*/V_VisibleSS.get());
 
   // A switch for turning on/off XBorder setting
   ManualTTLMenu.addMenuItem(
       ManualTTLMenu_XBorderAUTO_ItemIdx, ManualTTLEnabled,
       /*Prefix=*/"X:", /*Item=*/XBorderAUTO ? "AUTO" : "MANUAL");
 
-  ManualTTLMenu.addMenuItem(
-      ManualTTLMenu_XBorder_ItemIdx, ManualTTLEnabled && !XBorderAUTO,
-      /*Prefix=*/"", /*Item=*/std::to_string(ManualTTL.H_BackPorch));
+  static Utils::StaticString<8> H_BackPorchSS;
+  H_BackPorchSS = ManualTTL.H_BackPorch;
+  ManualTTLMenu.addMenuItem(ManualTTLMenu_XBorder_ItemIdx,
+                            ManualTTLEnabled && !XBorderAUTO,
+                            /*Prefix=*/"", /*Item=*/H_BackPorchSS.get());
 
   // A switch for turning on/off YBorder setting
   ManualTTLMenu.addMenuItem(
       ManualTTLMenu_YBorderAUTO_ItemIdx, ManualTTLEnabled,
       /*Prefix=*/"Y:", /*Item=*/YBorderAUTO ? "AUTO" : "MANUAL");
 
-  ManualTTLMenu.addMenuItem(
-      ManualTTLMenu_YBorder_ItemIdx, ManualTTLEnabled && !YBorderAUTO,
-      /*Prefix=*/"", /*Item=*/std::to_string(ManualTTL.V_BackPorch));
+  static Utils::StaticString<8> V_BackPorchSS;
+  V_BackPorchSS = ManualTTL.V_BackPorch;
+  ManualTTLMenu.addMenuItem(ManualTTLMenu_YBorder_ItemIdx,
+                            ManualTTLEnabled && !YBorderAUTO,
+                            /*Prefix=*/"", /*Item=*/V_BackPorchSS.get());
 
   ManualTTLMenu.display(/*Selection=*/ManualTTLMenuIdx, MANUAL_TTL_DISPLAY_MS);
 }

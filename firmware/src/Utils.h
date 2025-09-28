@@ -94,11 +94,10 @@ struct Utils {
     void clear() { std::fill(Vec.begin(), Vec.end(), InitVal); }
   };
 
-  [[noreturn]] static void unreachable(const std::string &Msg) {
+  [[noreturn]] static void unreachable(const char *Msg) {
     DBG_PRINT(std::cerr << Msg << "\n";)
     exit(1);
   }
-
 
   template <typename T, unsigned Sz>
   class FixedVector {
@@ -190,6 +189,16 @@ struct Utils {
     void clear() {
       memset(Buff, '\0', StaticSz);
       Sz = 0;
+    }
+    StaticString &operator=(int Num) {
+      clear();
+      *this << Num;
+      return *this;
+    }
+    StaticString &operator=(const char *Str) {
+      clear();
+      *this << Str;
+      return *this;
     }
   };
 };
