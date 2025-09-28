@@ -319,7 +319,7 @@ public:
   std::optional<absolute_time_t> DisplayTxtEndTime;
   /// NOTE: This won't write to the display directly. You need to call
   /// displayTxtTick()!
-  void displayTxt(const std::string &Txt, int Time = 0);
+  void displayTxt(const char *Txt, int Time = 0);
   /// Copies the TxtBuffer to the visible Buffer.
   void displayTxtTick();
   int ManualTTLMenuIdx = 0;

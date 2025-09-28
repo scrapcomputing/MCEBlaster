@@ -120,7 +120,7 @@ public:
   /// Writes Line to TxtBuffer.
   void displayTxt(const std::string &Line, int X, bool Center = false);
   /// Write a text page to the dipslay buffer (not TxtBuffer).
-  void displayPage(const std::string &PageTxt, bool Center = true);
+  void displayPage(const Utils::StaticString<640> &PageTxt, bool Center = true);
   /// Copy TxtBuffer to Buffer, i.e. show text on screen.
   void copyTxtBufferToScreen();
 

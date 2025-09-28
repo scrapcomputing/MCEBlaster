@@ -9,7 +9,6 @@
 #include "Utils.h"
 #include "pico/stdlib.h"
 #include <cmath>
-#include <sstream>
 
 static constexpr const uint32_t EGABorderCounter = 700;
 static constexpr const uint32_t CGABorderCounter = 700;
@@ -369,7 +368,7 @@ void TTLReader::updateSyncPolarityVariables() {
     // VSync
     Polarity NewVSyncPolarity = GetPolarity(VSyncPolarityPio, VSyncPolaritySM);
     DBG_PRINT(if (NewVSyncPolarity != VSyncPolarity) {
-      std::cout << "NewVSyncPolarity=" << polarityToStr(NewVSyncPolarity)
+      std::cout << "NewVSyncPolarity=" << polarityToChar(NewVSyncPolarity)
                 << "\n";
     })
     VSyncPolarity = NewVSyncPolarity;
@@ -381,7 +380,7 @@ void TTLReader::updateSyncPolarityVariables() {
     // HSync
     Polarity NewHSyncPolarity = GetPolarity(HSyncPolarityPio, HSyncPolaritySM);
     DBG_PRINT(if (NewHSyncPolarity != HSyncPolarity) {
-      std::cout << "NewHSyncPolarity=" << polarityToStr(NewHSyncPolarity)
+      std::cout << "NewHSyncPolarity=" << polarityToChar(NewHSyncPolarity)
                 << "\n";
     })
     HSyncPolarity = NewHSyncPolarity;
@@ -1171,15 +1170,15 @@ void TTLReader::checkAndUpdateMode() {
       DBG_PRINT(std::cout << "ManualTTLEnabled=" << ManualTTLEnabled << "\n";)
       DBG_PRINT(ManualTTL.dump(std::cout);)
       DBG_PRINT(std::cout << "Could not match Polarity="
-                          << polarityToStr(VSyncPolarity) << " and Hz=" << VHz
+                          << polarityToChar(VSyncPolarity) << " and Hz=" << VHz
                           << "\n";)
       // Display a helper debugging message that this is an unknown mode.
       // But limit the number of times the user will see the message.
       if (UsrAction == UserAction::None && UnknownMsgMaxCnt > 0) {
         --UnknownMsgMaxCnt;
         char Buff[40];
-        snprintf(Buff, 40, "UNKNOWN MODE: VSYNC %dHz POLARITY:%s", (int)VHz,
-                 polarityToStr(VSyncPolarity));
+        snprintf(Buff, 40, "UNKNOWN MODE: VSYNC %dHz POLARITY:%c", (int)VHz,
+                 polarityToChar(VSyncPolarity));
         displayTxt(Buff, UNKNOWN_MODE_MS);
       }
     }
@@ -1195,9 +1194,13 @@ void TTLReader::checkAndUpdateMode() {
     DBG_PRINT(std::cout << "\nChangeMode: " << *NewModeOpt << "\n";)
     DBG_PRINT(std::cout << "      From: " << TimingsTTL << "\n";)
     DBG_PRINT(std::cout << "OLD:\n";)
-    DBG_PRINT(TimingsTTL.dumpFull(std::cout, 0);)
+    Utils::StaticString<640> SS;
+    TimingsTTL.dumpFull(SS, 0);
+    DBG_PRINT(std::cout << SS.get() << "\n";)
     DBG_PRINT(std::cout << "NEW:\n";)
-    DBG_PRINT(NewModeOpt->dumpFull(std::cout, 0);)
+    SS.clear();
+    NewModeOpt->dumpFull(SS, 0);
+    DBG_PRINT(std::cout << SS.get() << "\n";);
     Buff.setMode(*NewModeOpt);
     TimingsTTL = *NewModeOpt;
     getDividerAutomatically();
@@ -1206,13 +1209,15 @@ void TTLReader::checkAndUpdateMode() {
 }
 
 void TTLReader::displayTTLInfo() {
+  DBG_PRINT(std::cout << __FUNCTION__ << "\n";)
   TimingsTTL.PxClk = getPxClkFor(TimingsTTL);
   const auto &SamplingOffset = getSamplingOffsetFor(TimingsTTL);
-  std::stringstream SS;
+  DBG_PRINT(std::cout << __FUNCTION__ << " after getSamplingOffsetFor()\n";)
+  Utils::StaticString<640> SS;
   SS << "TTL INFO\n";
   SS << "--------\n";
   TimingsTTL.dumpFull(SS, SamplingOffset);
-  Buff.displayPage(SS.str());
+  Buff.displayPage(SS);
 }
 
 void TTLReader::showProfile() {
@@ -1298,7 +1303,7 @@ void __not_in_flash_func(TTLReader::handleButtons)() {
     }
     if (BtnA == ButtonState::LongPress) {
       if (NoSignal) {
-        displayTxt("NO TTL SIGNAL ", NO_TTL_SIGNAL_MS);
+        displayTxt("NO TTL SIGNAL", NO_TTL_SIGNAL_MS);
         return;
       }
       LastProfileBank = *ProfileBankOpt;
@@ -1396,9 +1401,9 @@ void __not_in_flash_func(TTLReader::handleButtons)() {
       if (ChangedPxClk) {
         DBG_PRINT(std::cout << "Before saveToFlash() in ChangePxClk\n";)
         saveToFlash();
-        displayTxt("PxCLK SAVED TO FLASH ", PX_CLK_EXIT_DISPLAY_MS);
+        displayTxt("PxCLK SAVED TO FLASH", PX_CLK_EXIT_DISPLAY_MS);
       } else {
-        displayTxt("PxCLK UNCHANGED ", PX_CLK_EXIT_DISPLAY_MS);
+        displayTxt("PxCLK UNCHANGED", PX_CLK_EXIT_DISPLAY_MS);
       }
       UsrAction = UserAction::None;
       return;
@@ -1406,7 +1411,7 @@ void __not_in_flash_func(TTLReader::handleButtons)() {
   }
 }
 
-void TTLReader::displayTxt(const std::string &Txt, int Time) {
+void TTLReader::displayTxt(const char *Txt, int Time) {
   DBG_PRINT(std::cout << "TTLReader::" << __FUNCTION__ << " Txt=" << Txt
                       << " Time=" << Time << "\n";)
   Buff.displayTxt(Txt, 0, /*Center=*/true);

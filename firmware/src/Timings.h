@@ -7,6 +7,7 @@
 #define __TIMINGS_H__
 
 #include "Debug.h"
+#include "Utils.h"
 #include <cstdint>
 #include <cstdlib>
 #include <optional>
@@ -49,7 +50,7 @@ enum class Polarity {
 static constexpr const Polarity Pos = Polarity::Pos;
 static constexpr const Polarity Neg = Polarity::Neg;
 
-const char *polarityToStr(Polarity P);
+const char polarityToChar(Polarity P);
 
 // Extra boundary because XBorder is not precise.
 // Ideally the buffer would contain only non-black pixels but our XBorder may be
@@ -135,10 +136,12 @@ struct TTLDescr {
            V_Visible == Other.V_Visible;
   }
   bool operator!=(const TTLDescr &Other) const { return !(*this == Other); }
-  void dump(std::ostream &OS) const;
-  void dumpFull(std::ostream &OS, uint32_t SamplingOffset) const;
+  void dump(Utils::StaticString<64> &SS) const;
+  void dumpFull(Utils::StaticString<640> &Buff, uint32_t SamplingOffset) const;
   friend std::ostream &operator<<(std::ostream &OS, const TTLDescr &R) {
-    R.dump(OS);
+    Utils::StaticString<64> SS;
+    R.dump(SS);
+    OS << SS.get();
     return OS;
   }
 };

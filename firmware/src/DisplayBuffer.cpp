@@ -105,7 +105,7 @@ void DisplayBuffer::displayChar(char C, int X, int Y, uint8_t Buff[][BuffX],
   showBitmap(CharBMap, X, Y, Buff, FgColor, BgColor, ZoomXLevel, ZoomYLevel);
 }
 
-void DisplayBuffer::displayPage(const std::string &PageTxt, bool Center) {
+void DisplayBuffer::displayPage(const Utils::StaticString<640> &PageTxt, bool Center) {
   clear();
 
   DBG_PRINT(std::cout << __FUNCTION__ << " PageTxt:\n" << PageTxt << "\n";)

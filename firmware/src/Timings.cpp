@@ -55,14 +55,14 @@ const char *modeToStr(TTL M) {
   return "UNKNOWN";
 }
 
-const char *polarityToStr(Polarity P) {
+const char polarityToChar(Polarity P) {
   switch (P) {
   case Polarity::Neg:
-    return "-";
+    return '-';
   case Polarity::Pos:
-    return "+";
+    return '+';
   }
-  return "ERR";
+  return 'E';
 }
 
 /// The allowed error for matching the measured Hz compared to the presets.
@@ -88,12 +88,12 @@ TTLDescr &TTLDescr::operator=(const TTLDescrReduced &Other) {
   return *this;
 }
 
-void TTLDescr::dump(std::ostream &OS) const {
-  OS << modeToStr(Mode) << " V:" << V_Hz << polarityToStr(V_SyncPolarity)
-     << " H:" << H_Hz << polarityToStr(H_SyncPolarity) << " PxClk:" << PxClk;
+void TTLDescr::dump(Utils::StaticString<64> &SS) const {
+  SS << modeToStr(Mode) << " V:" << V_Hz << polarityToChar(V_SyncPolarity)
+     << " H:" << H_Hz << polarityToChar(H_SyncPolarity) << " PxClk:" << PxClk;
 }
 
-void TTLDescr::dumpFull(std::ostream &OS, uint32_t SamplingOffset) const {
+void TTLDescr::dumpFull(Utils::StaticString<640> &OS, uint32_t SamplingOffset) const {
   char PxClkStr[10];
   snprintf(PxClkStr, 10, "%-2.3f", (float)PxClk / 1000000);
   char V_Hz_Str[10];
@@ -103,9 +103,9 @@ void TTLDescr::dumpFull(std::ostream &OS, uint32_t SamplingOffset) const {
 
   OS << "VIDEO MODE: " << modeToStr(Mode) << "\n";
   OS << "VERTICAL SYNC:   " << V_Hz_Str
-     << " Hz  POLARITY: " << polarityToStr(V_SyncPolarity) << "\n";
+     << " Hz  POLARITY: " << polarityToChar(V_SyncPolarity) << "\n";
   OS << "HORIZONTAL SYNC: " << H_KHz_Str
-     << " KHz POLARITY: " << polarityToStr(H_SyncPolarity) << "\n";
+     << " KHz POLARITY: " << polarityToChar(H_SyncPolarity) << "\n";
   OS << "PIXEL CLOCK: " << PxClkStr << "MHz SAMPLING OFFSET: " << SamplingOffset << "\n";
   OS << "HORIZONTAL VISIBLE:     " << H_Visible - XB << "\n";
   OS << "HORIZONTAL BACK PORCH: " << H_BackPorch << "\n";

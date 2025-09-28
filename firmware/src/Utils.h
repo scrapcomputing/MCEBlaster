@@ -10,6 +10,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <iterator>
 
@@ -157,6 +158,39 @@ struct Utils {
     }
     iterator begin() { return iterator(0, *this); }
     iterator end() { return iterator(DataSz, *this); }
+  };
+
+  template <int StaticSz> class StaticString {
+    int Sz = 0;
+    char Buff[StaticSz];
+
+  public:
+    StaticString() { clear(); }
+    StaticString &operator<<(const char *Str) {
+      const char *C = Str;
+      while (*C != '\0') {
+        assert(Sz < StaticSz && "Out of bounds!");
+        Buff[Sz++] = *C;
+        ++C;
+      }
+      return *this;
+    }
+    StaticString &operator<<(int Num) {
+      char TmpBuff[8];
+      snprintf(TmpBuff, 8, "%d", Num);
+      *this << TmpBuff;
+      return *this;
+    }
+    operator const char *() const { return Buff; }
+    const char *get() const { return Buff; }
+    int size() const { return Sz; }
+    using iterator = const char *;
+    iterator begin() const { return Buff; }
+    iterator end() const { return Buff + Sz; }
+    void clear() {
+      memset(Buff, '\0', StaticSz);
+      Sz = 0;
+    }
   };
 };
 

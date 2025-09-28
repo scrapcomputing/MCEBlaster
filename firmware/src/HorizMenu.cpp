@@ -27,7 +27,7 @@ void HorizMenu<MaxMenuItems>::display(int Selection, int DisplayTime) {
     const char *SelectR = Idx == Selection ? "]" : " ";
     Line += MItem.Prefix + SelectL + MItem.Item + SelectR;
   }
-  TTLR.displayTxt(Line, DisplayTime);
+  TTLR.displayTxt(Line.c_str(), DisplayTime);
 }
 
 template <int MaxMenuItems>
