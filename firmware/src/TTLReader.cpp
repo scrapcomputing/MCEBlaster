@@ -1155,7 +1155,7 @@ bool TTLReader::manualTTLMode() {
   return false;
 }
 
-void TTLReader::checkAndUpdateMode() {
+void __not_in_flash_func(TTLReader::checkAndUpdateMode)() {
   // DBG_PRINT(std::cout << "Frame us=" << FrameUs << " Hz=" << VHz
   //                     << " Polarity=" << getPolarityStr(VSyncPolarity)
   //                     << " mode=" << modeToStr(Mode) << "\n";)
@@ -1255,7 +1255,7 @@ void TTLReader::changeProfile(bool Next) {
   checkAndUpdateMode();
 }
 
-void __not_in_flash_func(TTLReader::handleButtons)() {
+void TTLReader::handleButtons() {
   AutoAdjustBtn.tick();
   PxClkBtn.tick();
 

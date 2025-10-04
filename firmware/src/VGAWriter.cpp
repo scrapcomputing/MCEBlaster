@@ -142,7 +142,7 @@ void __not_in_flash_func(VGAWriter::DrawLineVSyncHighMDA8x1)(unsigned Line) {
     pio_sm_put_blocking(VGAPio, VGASM, BlackMDA_8_V);
 }
 
-void VGAWriter::tryChangePIOMode() {
+void __not_in_flash_func(VGAWriter::tryChangePIOMode)() {
   TimingsTTL = TTLReaderPtr->getMode();
 
   if (TimingsTTL == LastMode)
@@ -259,7 +259,7 @@ void VGAWriter::restartCore1TTLReader(bool NoSignal) {
   DBG_PRINT(std::cout << "VGAWriter Wait Done\n";)
 }
 
-void VGAWriter::checkInputSignal() {
+  void __not_in_flash_func(VGAWriter::checkInputSignal()) {
   // If the HSync polarity PIO's buffer is empty then there is no TTL signal
   if (pio_sm_is_rx_fifo_empty(NoInputSignalPio, NoInputSignalSM)) {
     // No signal!
@@ -359,7 +359,7 @@ void __not_in_flash_func(VGAWriter::drawFrame8x1)() {
     DrawBlackLineWithMaskMDA8x1(BlackMDA_8);
 }
 
-void VGAWriter::runForEver() {
+void __not_in_flash_func(VGAWriter::runForEver)() {
   uint32_t Cnt = 0;
   while (true) {
     switch (TimingsTTL.Mode) {
