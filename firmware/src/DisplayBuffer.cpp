@@ -5,7 +5,11 @@
 
 #include "DisplayBuffer.h"
 #include "TTLReader.h"
+#if defined(PICO_RP2040)
+#include "xpm/splash_small.xpm" // To save memory!
+#elif defined(PICO_RP2350)
 #include "xpm/splash.xpm"
+#endif
 #include <cstring>
 
 DisplayBuffer::DisplayBuffer() : SplashXPM(splash) {
@@ -185,7 +189,7 @@ void DisplayBuffer::copyTxtBufferToScreen() {
                         true /*Start immediately*/);
 }
 
-void DisplayBuffer::fillBottomWithBlackAfter(uint32_t Line) {
+void __not_in_flash_func(DisplayBuffer::fillBottomWithBlackAfter)(uint32_t Line) {
   if (Line >= BuffY)
     return;
   if (dma_channel_is_busy(DMAChannel2))

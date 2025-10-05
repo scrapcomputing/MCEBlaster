@@ -1255,7 +1255,7 @@ void TTLReader::changeProfile(bool Next) {
   checkAndUpdateMode();
 }
 
-void TTLReader::handleButtons() {
+void __not_in_flash_func(TTLReader::handleButtons)() {
   AutoAdjustBtn.tick();
   PxClkBtn.tick();
 
@@ -1596,6 +1596,7 @@ void TTLReader::runForEver() {
       setBorders();
 
     handleButtons();
-    displayTxtTick();
+    if (Mod == 0)
+      displayTxtTick();
   }
 }
