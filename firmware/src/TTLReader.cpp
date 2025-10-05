@@ -1300,7 +1300,7 @@ void __not_in_flash_func(TTLReader::handleButtons)() {
   }
 
   if (UsrAction == UserAction::None) {
-    if (BtnA == ButtonState::Release) {
+    if (BtnA == ButtonState::Release || BtnA == ButtonState::MedRelease) {
       if (NoSignal) {
         displayTxt("NO TTL SIGNAL", NO_TTL_SIGNAL_MS);
         return;
