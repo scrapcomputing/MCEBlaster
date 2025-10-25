@@ -5,6 +5,7 @@ A simple standalone MCA/CGA/EGA to VGA adapter based on a raspberry pi Pico.
 <img src='img/MCEBlaster_photo.jpg' height=200 width=auto>
 
 # Videos
+- MCE Blaster video part 3: https://www.youtube.com/watch?v=SX1B-mfE6yk
 - MCE Blaster video part 2: https://www.youtube.com/watch?v=Neg1WR7Hz5s
 - MCE Blaster video part 1: https://www.youtube.com/watch?v=kgDOiGoxKvE
 
@@ -34,7 +35,7 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 
 # Usage
 
-*NOTE: Controls have changes since version 0.2!*
+*NOTE: Controls have changed since version 0.2!*
 
 ## Adjusting the pixel clock
 - Push the `PIXEL CLOCK` button once, this will enter the pixel adjust mode. This should show text on screen displaying the current pixel clock.
@@ -61,6 +62,8 @@ Sampling offset 2:        |     |     |     |
 Sampling offset 3:         |     |     |     |
 
 ```
+
+The reason why offsets are needed and a demonstration of how they work can be found in [video part 3](https://www.youtube.com/watch?v=SX1B-mfE6yk).
 
 ## Centering the image
 - Push the `AUTO ADJUST` button. This works best when the image shown is full from border to border.
@@ -109,6 +112,8 @@ The default profile is Profile 0.
 
 Changing profiles is as easy as long-pressing the `AUTO ADJUST` button and cycling through the profiles with either the `AUTO ADJUST` or the `PIXEL CLOCK` button.
 
+Profiles are demonstrated briefly in [video part 3](https://www.youtube.com/watch?v=SX1B-mfE6yk).
+
 # How it works
 ## Overview
 The first core reads the TTL video data (through the level-shifter) from a PIO state-machine and places the pixels onto a buffer in memory.
@@ -142,9 +147,11 @@ This process is explained in more detail in the [video part 2](https://www.youtu
 
 Download gerbers: https://github.com/scrapcomputing/MCEBlaster/releases
 
+*NOTE: You can still use the latest firmware with old revisions of the PCB, they are fully compatible.*
+
 Reference      | Quantity     | Value                                                                  | Description
 ---------------|--------------|------------------------------------------------------------------------|------------
-N/A            | 3            | 1K Rm065 through-hole linear potentiometer (or replaced by wire between 2 pins as shown on PCB) | Adjust R G B VGA signals
+N/A            | 3            | 1K Rm065 through-hole linear potentiometer (optional: can be replaced by a wire between 2 pins as shown on PCB and the [photo below](#potentiometers-are-optional) | Adjust R G B VGA signals
 C1             | 1            | 0.1uF disk ceramic capacitor                                           | Decoupling capacitor for level-shifter IC
 D1             | 1 (optional) | Diode Through-hole (e.g., Schottky 1N5817 or silicon 1N4001)           | For powering the MCE Blaster from the PC (instead of the Pico's micro-USB)
 J2             | 1 (optional) | 1x02 through-hole Male PinHeader 2.54mm                                | For alternative external power
@@ -152,11 +159,17 @@ J1             | 1            | DB9 Male Horizontal                             
 J3             | 1            | DB15 Female HighDensity Connector (e.g., Kycon K61X-E15S-NJ-VESA, thanks @wrljet) | For connecting to VGA monitor
 R3 R4 R6       | 3            | 390 Ohm Through-hole resistor 1% (alternatively 470 Ohm)               | For VGA signal DAC
 R2 R5 R7       | 3            | 780 Ohm Through-hole resistor 1% (alternatively 1K Ohm)                | For VGA signal DAC
-SW1,SW2        | 1            | 6mm Through-hole push button                                           | Auto-adjust and pixel-clock buttons
+SW1,SW2        | 2            | 6mm Through-hole push button                                           | Auto-adjust and pixel-clock buttons
 U1             | 1            | 74HCT245 DIP-20 (+ optional socket)                                    | Level-shifter IC
 U2             | 1            | RaspberryPi Pico (or Pico 2)                                           | Pi Pico (or Pico 2)
 N/A (for Pico) | 2            | 1x20 female through-hole pin-header 2.54mm pitch                       | PCB Pico headers
 N/A (for Pico) | 2            | 1x20 male through-hole pin-header 2.54mm pitch                         | Headers for the Pico
+
+## Potentiometers are optional.
+
+They can be replaced by a wire as shown in the photo:
+
+<img src='img/Potentiometers_optional.jpg' height=200 width=auto>
 
 
 # Build instructions (for developers)
