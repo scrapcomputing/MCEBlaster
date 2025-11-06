@@ -160,7 +160,7 @@ J3             | 1            | DB15 Female HighDensity Connector (e.g., Kycon K
 R3 R4 R6       | 3            | 390 Ohm Through-hole resistor 1% (alternatively 470 Ohm)               | For VGA signal DAC
 R2 R5 R7       | 3            | 780 Ohm Through-hole resistor 1% (alternatively 1K Ohm)                | For VGA signal DAC
 SW1,SW2        | 2            | 6mm Through-hole push button                                           | Auto-adjust and pixel-clock buttons
-U1             | 1            | 74HCT245 DIP-20 (+ optional socket)                                    | Level-shifter IC
+U1             | 1            | 74LVC245A DIP-20 (e.g., SN74LVC245AN) (+ optional socket)              | Level-shifter IC (NOTE: in the video I am using an 74HCT245 which turns out operates [out of spec](https://github.com/scrapcomputing/MCEBlaster/issues/31))
 U2             | 1            | RaspberryPi Pico (or Pico 2)                                           | Pi Pico (or Pico 2)
 N/A (for Pico) | 2            | 1x20 female through-hole pin-header 2.54mm pitch                       | PCB Pico headers
 N/A (for Pico) | 2            | 1x20 male through-hole pin-header 2.54mm pitch                         | Headers for the Pico
