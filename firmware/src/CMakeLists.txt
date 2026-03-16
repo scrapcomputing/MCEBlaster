@@ -24,6 +24,7 @@ cmake_minimum_required(VERSION 3.13)
 
 set(REVISION_MAJOR 0)
 set(REVISION_MINOR 3)
+set(REVISION_PATCH 1)
 
 message("PICO_SDK_PATH = ${PICO_SDK_PATH}")
 

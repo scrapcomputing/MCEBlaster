@@ -32,7 +32,8 @@ void DisplayBuffer::noSignal() {
 
   // Print the version at the bottom of the screen.
   char Version[8];
-  snprintf(Version, 8, "v%d.%d", REVISION_MAJOR, REVISION_MINOR);
+  snprintf(Version, 8, "v%d.%d.%d", REVISION_MAJOR, REVISION_MINOR,
+           REVISION_PATCH);
   displayTxt(Version, 0, /*Center=*/false);
   // Special case for MDA because we print 2 pixels per byte.
   int DisplayWidth = TimingsTTL->Mode == TTL::MDA ? TimingsTTL->H_Visible / 2
