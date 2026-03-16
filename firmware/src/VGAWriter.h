@@ -43,6 +43,9 @@ class VGAWriter {
   PioProgramLoader &PioLoader;
 
   bool NoSignal = false;
+  /// To save CRT displays, turn off the VGA signal if we are displaying the
+  /// "NoSignal" message for too long.
+  std::optional<absolute_time_t> VGAOffTime;
 
   void checkInputSignal();
 

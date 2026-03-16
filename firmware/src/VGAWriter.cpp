@@ -267,6 +267,25 @@ void VGAWriter::restartCore1TTLReader(bool NoSignal) {
       DBG_PRINT(std::cout << "No Signal\n";)
       NoSignal = true;
       restartCore1TTLReader(NoSignal);
+      auto Now = get_absolute_time();
+      VGAOffTime = delayed_by_ms(Now, VGA_OFF_TIMER_MS);
+    } else {
+      // Turn off VGA PIOs. This is to avoid CRT burn-in.
+      if (VGAOffTime) {
+        auto Now = get_absolute_time();
+        if (to_ms_since_boot(Now) > to_ms_since_boot(*VGAOffTime)) {
+          VGAOffTime = std::nullopt;
+          DBG_PRINT(std::cout << "VGA Off Timeout, Disable VGAPio\n";)
+          pio_sm_set_enabled(VGAPio, VGASM, false);
+          // Stay here until we get a signal.
+          while (pio_sm_is_rx_fifo_empty(NoInputSignalPio, NoInputSignalSM))
+            pio_sm_get(NoInputSignalPio, NoInputSignalSM);
+          NoSignal = false;
+          DBG_PRINT(std::cout << "VGA Off Over, Enable VGAPio\n";)
+          pio_sm_set_enabled(VGAPio, VGASM, true);
+          restartCore1TTLReader(NoSignal);
+        }
+      }
     }
     return;
   }

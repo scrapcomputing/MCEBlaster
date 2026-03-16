@@ -32,6 +32,9 @@ static constexpr const uint32_t PX_CLK_BTN_GPIO = 22;
 static constexpr const int DEBOUNCE_SZ = 2;
 static constexpr const int LONGPRESS_CNT = 60;
 
+/// Turn off the VGA signal if no signal for this many ms (to save CRTs).
+static constexpr const uint32_t VGA_OFF_TIMER_MS = 30000;
+
 /// Cancel pixel clock adjustment after this many frames of inactivity.
 static constexpr const uint32_t PX_CLK_END_TIME_MS = 12000;
 static constexpr const int PX_CLK_INITIAL_TXT_DISPLAY_MS = PX_CLK_END_TIME_MS;
