@@ -1,8 +1,12 @@
 # MCE Blaster
 
-A simple standalone MCA/CGA/EGA to VGA adapter based on a raspberry pi Pico.
+A versatile standalone MCA/CGA/EGA TTL to VGA adapter based on a raspberry pi Pico.
 
 <img src='img/MCEBlaster_photo.jpg' height=200 width=auto>
+
+<img src='img/prehistorik_mceblaster.jpg' height=200 width=auto>
+
+<img src='img/prehistorik_mceblaster_menu.jpg' height=200 width=auto>
 
 # Videos
 - MCE Blaster video part 3: https://www.youtube.com/watch?v=SX1B-mfE6yk
@@ -21,7 +25,7 @@ The Pico reads the TTL input video signal, writes the pixels to a buffer and the
 - Pixel clock tuning for each mode
 - Auto-adjustment functionality that centers the image on screen
 - EGA brown color correction
-- On-screen messages
+- On-screen menu and messages
 - Through-Hole PCB
 
 # Installing the firmware to the Pico (Pico 1 or Pico 2)
