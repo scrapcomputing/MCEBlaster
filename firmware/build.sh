@@ -16,25 +16,23 @@ PICO_SDK_PATH=${1}
 
 echo "PICO_SDK_PATH=${PICO_SDK_PATH}"
 
-BUILD_PICO1=build_pico1
-BUILD_PICO2=build_pico2
-for dir in "${BUILD_PICO1}" "${BUILD_PICO2}"; do
-    rm -rf ${dir}
-    mkdir -p ${dir}
-done
-
 SRC_DIR=src/
+
+TARGETS=(pico pico_w pico2 pico2_w)
+
 CMAKE_COMMON="-DCMAKE_BUILD_TYPE=Release -DPICO_FREQ=270000 -DPICO_SDK_PATH=${PICO_SDK_PATH} "
 
-echo "=== Pico 1 ==="
-cmake -B ${BUILD_PICO1} ${CMAKE_COMMON} -DPICO_BOARD=pico ${SRC_DIR}
-make -C ${BUILD_PICO1} -j
+for target in ${TARGETS[@]}; do
+    build_dir=build_${target}
+    rm -rf ${build_dir}
+    mkdir -p ${build_dir}
 
-echo "=== Pico 2 ==="
-cmake -B ${BUILD_PICO2} ${CMAKE_COMMON} -DPICO_BOARD=pico2 ${SRC_DIR}
-make -C ${BUILD_PICO2} -j
+    echo "=== ${target} ==="
+    cmake -B ${build_dir} ${CMAKE_COMMON} -DPICO_BOARD=${target} ${SRC_DIR}
+    make -C ${build_dir} -j
+done
 
-echo "Done!"
-for dir in "${BUILD_PICO1}" "${BUILD_PICO2}"; do
-    ls ${dir}/*.uf2
+echo "=== Images ==="
+for target in ${TARGETS[@]}; do
+    ls build_${target}/*.uf2
 done

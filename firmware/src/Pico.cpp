@@ -43,8 +43,11 @@ Pico::Pico() {
   // Initialize stdio so that we can print debug messages.
   stdio_init_all();
   // Initialize the Pico LED.
+#ifndef PICO_WIRELESS
+  // pico_w has no LED.
   gpio_init(PICO_DEFAULT_LED_PIN);
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+#endif
 
   // Wait for a bit otherwise this does not show up during serial debug.
   DBG_PRINT(sleep_ms(1500);)

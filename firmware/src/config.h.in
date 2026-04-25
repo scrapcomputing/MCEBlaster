@@ -12,6 +12,7 @@
 #define PICO_VOLTAGE @PICO_VOLTAGE@
 #cmakedefine PICO1 @PICO1@
 #cmakedefine PICO2 @PICO2@
+#cmakedefine PICO_WIRELESS @PICO_WIRELESS@
 #cmakedefine DISABLE_PICO_LED
 #cmakedefine DBGPRINT
 

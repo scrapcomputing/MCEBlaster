@@ -28,7 +28,10 @@ int main() {
   DBG_PRINT(sleep_ms(1500);)
   DBG_PRINT(std::cout << PROJECT_NAME << " rev." << REVISION_MAJOR << "."
                       << REVISION_MINOR << "\n";)
+#ifndef PICO_WIRELESS
+    // pico_w has no LED.
   Pico.initGPIO(PICO_DEFAULT_LED_PIN, GPIO_OUT, Pico::Pull::Down, "LED");
+#endif
   Pico.initGPIO(AUTO_ADJUST_GPIO, GPIO_IN, Pico::Pull::Up, "AutoAdjust");
   // Note: pull up seems to help with level shifting
   Pico.initGPIO(PinRange(EGA_RGB_GPIO, EGA_RGB_GPIO + 6), GPIO_IN,

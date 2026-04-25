@@ -68,9 +68,24 @@ public:
   /// Sets \p GPIO to \p Value.
   inline void setGPIO(uint32_t GPIO, bool Value) { gpio_put(GPIO, Value); }
   inline bool getGPIO(uint32_t GPIO) { return gpio_get(GPIO); }
-  void ledSet(bool State) { gpio_put(PICO_DEFAULT_LED_PIN, State); }
-  void ledON() { gpio_put(PICO_DEFAULT_LED_PIN, 1); }
-  void ledOFF() { gpio_put(PICO_DEFAULT_LED_PIN, 0); }
+  void ledSet(bool State) {
+    // pico_w doesn't have an LED.
+#ifndef PICO_WIRELESS
+    gpio_put(PICO_DEFAULT_LED_PIN, State);
+#endif
+  }
+  void ledON() {
+    // pico_w doesn't have an LED.
+#ifndef PICO_WIRELESS
+    gpio_put(PICO_DEFAULT_LED_PIN, 1);
+#endif
+  }
+  void ledOFF() {
+    // pico_w doesn't have an LED.
+#ifndef PICO_WIRELESS
+    gpio_put(PICO_DEFAULT_LED_PIN, 0);
+#endif
+  }
   inline void clear(uint32_t Mask) { gpio_clr_mask(Mask); }
   inline void set(uint32_t Mask) { gpio_set_mask(Mask); }
 };
