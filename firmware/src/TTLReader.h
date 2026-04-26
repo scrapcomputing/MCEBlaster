@@ -308,6 +308,8 @@ private:
   void readConfigFromFlash();
 
 public:
+  const ButtonTy &getAutoAdjustBtn() const { return AutoAdjustBtn; }
+  const ButtonTy &getPxClkBtn() const { return PxClkBtn; }
   DisplayBuffer &getBuff() { return Buff; }
   /// \Returns true if \p Descr is high resolution. This is to tell apart EGA
   /// 640x350 from 640x200.

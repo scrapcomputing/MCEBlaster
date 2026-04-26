@@ -277,9 +277,14 @@ void VGAWriter::restartCore1TTLReader(bool NoSignal) {
           VGAOffTime = std::nullopt;
           DBG_PRINT(std::cout << "VGA Off Timeout, Disable VGAPio\n";)
           pio_sm_set_enabled(VGAPio, VGASM, false);
-          // Stay here until we get a signal.
-          while (pio_sm_is_rx_fifo_empty(NoInputSignalPio, NoInputSignalSM))
+          // Stay here until we get a signal or user presses a button.
+          while (pio_sm_is_rx_fifo_empty(NoInputSignalPio, NoInputSignalSM)) {
             pio_sm_get(NoInputSignalPio, NoInputSignalSM);
+            if (TTLReaderPtr->getAutoAdjustBtn().get() != ButtonState::None ||
+                TTLReaderPtr->getPxClkBtn().get() != ButtonState::None) {
+              break;
+            }
+          }
           NoSignal = false;
           DBG_PRINT(std::cout << "VGA Off Over, Enable VGAPio\n";)
           pio_sm_set_enabled(VGAPio, VGASM, true);
